@@ -932,7 +932,13 @@ function parseUserAnswer(text) {
   } else if (questionPhase === 2) {
     // Name only
     attendeeName = text.split(/[,\n]/)[0].trim();
+    console.log('[DEBUG] Raw name input:', text);
+    console.log('[DEBUG] attendeeName before clean:', attendeeName);
+    console.log('[DEBUG] attendeeCompany:', attendeeCompany);
+    console.log('[DEBUG] questionPhase:', questionPhase);
     checkVerification();
+    console.log('[DEBUG] verificationStatus:', verificationStatus);
+    console.log('[DEBUG] attendeeTier:', attendeeTier);
     // Tier greeting fires in handlePostReply after Herbie's response lands
 
   } else if (questionPhase === 3) {
