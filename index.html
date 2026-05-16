@@ -947,22 +947,33 @@ function extractName(text) {
 
 // ─── Verification logic ───────────────────────────────
 function checkVerification() {
+  // Clean up attendeeName — extract just the name words, strip filler phrases
+  attendeeName = cleanName(attendeeName);
   const nameLower = attendeeName.toLowerCase().trim();
   const companyLower = attendeeCompany.toLowerCase().trim();
+  const nameWords = nameLower.split(/\s+/);
 
   const match = KNOWN_ATTENDEES.find(a => {
-    const knownName = a.name.toLowerCase();
-    const knownCompany = a.company.toLowerCase();
-    const firstName = knownName.split(' ')[0];
-    const lastName  = knownName.split(' ').pop();
-    const nameMatch = knownName.includes(nameLower)
-      || nameLower.includes(firstName)
-      || nameLower.includes(lastName)
-      || (firstName.length > 3 && nameLower.startsWith(firstName));
-    const companyMatch = companyLower.length > 2 && (
-      knownCompany.includes(companyLower) || companyLower.includes('hub')
-    );
-    return nameMatch || (companyMatch && nameLower.length > 3);
+    const knownName    = a.name.toLowerCase();
+    const knownFirst   = knownName.split(' ')[0];
+    const knownLast    = knownName.split(' ').pop();
+
+    // First name match (4+ char first names only to avoid false positives)
+    const firstMatch = knownFirst.length >= 4 && nameWords.some(w => w === knownFirst || knownFirst.startsWith(w) && w.length >= 4);
+    // Last name match
+    const lastMatch  = nameWords.some(w => w === knownLast && w.length >= 4);
+    // Full name contained anywhere
+    const fullMatch  = nameLower.includes(knownFirst) && nameLower.includes(knownLast);
+    // Known name contains what they typed
+    const reverseMatch = knownName.includes(nameLower) && nameLower.length > 4;
+
+    const nameMatch = firstMatch || lastMatch || fullMatch || reverseMatch;
+
+    // Company match — we already set HUB from the gate, so this helps
+    const companyMatch = companyLower.includes('hub') || attendeeCompany === 'HUB International';
+
+    // Name match alone is enough; company narrows ambiguous cases
+    return fullMatch || lastMatch || (firstMatch && companyMatch) || reverseMatch;
   });
 
   if (match) {
@@ -972,15 +983,27 @@ function checkVerification() {
     exchangeCap        = (match.tier === 1) ? 15 : 10;
     if (!attendeeRole    && match.role)    attendeeRole    = match.role;
     if (!attendeeCompany && match.company) attendeeCompany = match.company;
-    // Inject pre-loaded email if available and not yet captured
     if (!attendeeEmail   && match.email)   attendeeEmail   = match.email;
-  } else if (attendeeName.split(' ').length >= 2 && (attendeeCompany.length > 2 || attendeeName.length > 5)) {
+  } else if (nameLower.split(/\s+/).length >= 2) {
+    // Has a first and last name but not on the list — pending
     verificationStatus = 'pending';
     attendeeTier       = null;
     exchangeCap        = 10;
   } else {
     verificationStatus = 'blocked';
   }
+}
+
+// ─── Clean name input ─────────────────────────────────
+function cleanName(raw) {
+  // Strip common filler phrases people type when asked for their name
+  return raw
+    .replace(/^(my name is|i'm|i am|it's|its|hi i'm|hey i'm|name:|called)/i, '')
+    .replace(/[!.,]/g, '')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 3) // max 3 words — no full sentences
+    .join(' ');
 }
 
 // ─── Handle post-reply logic ──────────────────────────
