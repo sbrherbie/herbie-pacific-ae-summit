@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Herbie — SBR at HUB LA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ─── RESET & BASE ─────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    background: #0c1a2e;
+    color: #ffffff;
+    font-family: 'DM Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+  }
+  :root {
+    --bg: #0c1a2e;
+    --card: #0f2035;
+    --border: #1e3a5f;
+    --gold: #c9943c;
+    --gold-end: #e8b96a;
+    --gold-grad: linear-gradient(135deg, #c9943c, #e8b96a);
+    --teal: #0ea5e9;
+    --green: #22c55e;
+    --amber: #f59e0b;
+    --text: #ffffff;
+    --muted: #94a3b8;
+    --max: 480px;
+  }
+
+  /* ─── LAYOUT ────────────────────────────────────────── */
+  #app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 16px;
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+  .screen {
+    display: none;
+    width: 100%;
+    max-width: var(--max);
+    flex-direction: column;
+    min-height: 100vh;
+  }
+  .screen.active { display: flex; }
+
+  /* ─── SBR BADGE ─────────────────────────────────────── */
+  .sbr-badge {
+    width: 40px; height: 40px;
+    background: var(--gold-grad);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: #0c1a2e;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+    box-shadow: 0 0 20px rgba(201,148,60,0.3);
+  }
+
+  /* ─── PULSE ─────────────────────────────────────────── */
+  .pulse-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--gold);
+    animation: pulse 2s ease-in-out infinite;
+    display: inline-block;
+  }
+  .pulse-wrap {
+    display: flex; align-items: center; gap: 8px;
+    justify-content: center;
+    margin-top: 12px;
+  }
+  .pulse-label {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.06em;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 rgba(201,148,60,0.5); }
+    50% { opacity: 0.7; transform: scale(1.15); box-shadow: 0 0 0 6px rgba(201,148,60,0); }
+  }
+
+  /* ─── BUTTONS ────────────────────────────────────────── */
+  .btn-gold {
+    background: var(--gold-grad);
+    border: none;
+    border-radius: 12px;
+    color: #0c1a2e;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    padding: 16px 32px;
+    cursor: pointer;
+    width: 100%;
+    max-width: 320px;
+    transition: opacity 0.18s, transform 0.18s;
+    letter-spacing: 0.01em;
+    box-shadow: 0 4px 24px rgba(201,148,60,0.25);
+  }
+  .btn-gold:active { opacity: 0.88; transform: scale(0.98); }
+  .btn-gold:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* ─── SCREEN 1 — LANDING ─────────────────────────────── */
+  #screen-landing {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    gap: 0;
+    padding: 48px 0;
+  }
+  #screen-landing .sbr-badge { margin-bottom: 32px; }
+  #screen-landing h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.25;
+    margin-bottom: 14px;
+    letter-spacing: -0.01em;
+  }
+  #screen-landing p.subhead {
+    font-size: 16px;
+    color: var(--muted);
+    line-height: 1.6;
+    max-width: 300px;
+    margin: 0 auto;
+  }
+  #screen-landing .btn-gold { margin-top: 36px; }
+  .micro-note {
+    font-size: 12px;
+    color: #4a6080;
+    margin-top: 14px;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.04em;
+  }
+
+  /* subtle grid bg */
+  #screen-landing::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(30,58,95,0.25) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(30,58,95,0.25) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  #screen-landing > * { position: relative; z-index: 1; }
+
+  /* ─── SCREEN 2 — CHAT ────────────────────────────────── */
+  #screen-chat {
+    padding: 0;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+  .chat-header {
+    padding: 16px 20px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--card);
+    flex-shrink: 0;
+  }
+  .chat-header-info { flex: 1; }
+  .chat-header-info .name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+  }
+  .chat-header-info .status {
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 2px;
+  }
+  .chat-header-info .status .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s infinite;
+  }
+  .exchange-counter {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: #4a6080;
+    background: rgba(30,58,95,0.5);
+    border: 1px solid var(--border);
+    padding: 4px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+  .chat-messages::-webkit-scrollbar { width: 4px; }
+  .chat-messages::-webkit-scrollbar-track { background: transparent; }
+  .chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .msg { display: flex; gap: 10px; align-items: flex-end; }
+  .msg.herbie { flex-direction: row; }
+  .msg.user { flex-direction: row-reverse; }
+
+  .herbie-avatar {
+    width: 28px; height: 28px;
+    background: var(--gold-grad);
+    border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 700;
+    font-size: 9px;
+    color: #0c1a2e;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(201,148,60,0.3);
+    margin-bottom: 2px;
+  }
+
+  .bubble {
+    max-width: 80%;
+    padding: 12px 16px;
+    border-radius: 16px;
+    font-size: 15px;
+    line-height: 1.55;
+    position: relative;
+  }
+  .msg.herbie .bubble {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+    color: #fff;
+  }
+  .msg.user .bubble {
+    background: linear-gradient(135deg, rgba(201,148,60,0.2), rgba(232,185,106,0.12));
+    border: 1px solid rgba(201,148,60,0.3);
+    border-bottom-right-radius: 4px;
+    color: #fff;
+  }
+
+  .typing-bubble {
+    display: flex; gap: 5px; align-items: center;
+    padding: 14px 16px;
+  }
+  .typing-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--gold);
+    opacity: 0.5;
+    animation: typingBounce 1.2s ease-in-out infinite;
+  }
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes typingBounce {
+    0%,60%,100% { transform: translateY(0); opacity: 0.5; }
+    30% { transform: translateY(-6px); opacity: 1; }
+  }
+
+  .chat-input-area {
+    padding: 12px 16px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border);
+    background: var(--card);
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    flex-shrink: 0;
+  }
+  .chat-input {
+    flex: 1;
+    background: rgba(30,58,95,0.4);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    color: #fff;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    resize: none;
+    outline: none;
+    max-height: 120px;
+    min-height: 44px;
+    line-height: 1.4;
+    transition: border-color 0.2s;
+  }
+  .chat-input:focus { border-color: rgba(201,148,60,0.5); }
+  .chat-input::placeholder { color: #4a6080; }
+  .send-btn {
+    width: 44px; height: 44px;
+    background: var(--gold-grad);
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: opacity 0.15s, transform 0.15s;
+    box-shadow: 0 2px 10px rgba(201,148,60,0.25);
+  }
+  .send-btn:active { opacity: 0.8; transform: scale(0.94); }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .send-btn svg { width: 18px; height: 18px; fill: #0c1a2e; }
+
+  /* ─── SCREEN 3 — EMAIL CAPTURE ───────────────────────── */
+  #screen-email {
+    justify-content: center;
+    align-items: center;
+    padding: 48px 0;
+    gap: 0;
+  }
+  .email-card {
+    background: var(--card);
+    border: 1px solid var(--gold);
+    border-radius: 20px;
+    padding: 32px 24px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 0 40px rgba(201,148,60,0.12);
+  }
+  .email-card .sbr-badge { margin: 0 auto 24px; }
+  .email-card h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.35;
+    margin-bottom: 8px;
+  }
+  .email-card p {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 24px;
+  }
+  .email-input {
+    width: 100%;
+    background: rgba(30,58,95,0.4);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    color: #fff;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.2s;
+    margin-bottom: 14px;
+    text-align: center;
+  }
+  .email-input:focus { border-color: rgba(201,148,60,0.6); }
+  .email-input::placeholder { color: #4a6080; }
+  .email-card .btn-gold { max-width: 100%; }
+  .email-note {
+    font-size: 11px;
+    color: #4a6080;
+    margin-top: 12px;
+    font-family: 'DM Mono', monospace;
+    line-height: 1.5;
+  }
+
+  /* ─── SCREEN 4 — CONFIRMATION ────────────────────────── */
+  #screen-confirm {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 48px 0;
+    gap: 0;
+  }
+  #screen-confirm .sbr-badge { margin-bottom: 32px; }
+  .checkmark-wrap {
+    width: 72px; height: 72px;
+    background: rgba(34,197,94,0.12);
+    border: 2px solid var(--green);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 24px;
+    animation: checkIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+  @keyframes checkIn {
+    0% { transform: scale(0); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .checkmark-wrap svg { width: 36px; height: 36px; stroke: var(--green); fill: none; stroke-width: 2.5; }
+  .checkmark-wrap svg path {
+    stroke-dasharray: 60;
+    stroke-dashoffset: 60;
+    animation: drawCheck 0.4s 0.3s ease forwards;
+  }
+  @keyframes drawCheck {
+    to { stroke-dashoffset: 0; }
+  }
+  #screen-confirm h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 24px;
+    color: #fff;
+    margin-bottom: 10px;
+  }
+  #screen-confirm .email-line {
+    font-size: 16px;
+    color: var(--muted);
+    margin-bottom: 28px;
+    line-height: 1.5;
+  }
+  .continue-link {
+    font-size: 15px;
+    font-weight: 500;
+    background: var(--gold-grad);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    cursor: pointer;
+    border: none;
+    font-family: 'DM Sans', sans-serif;
+    padding: 4px 0;
+    display: inline-block;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(201,148,60,0.4);
+    transition: opacity 0.15s;
+  }
+  .continue-link:active { opacity: 0.7; }
+
+  /* ─── FADE IN ────────────────────────────────────────── */
+  .screen.active {
+    animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ─── TOAST ──────────────────────────────────────────── */
+  #toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(15,32,53,0.95);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-size: 13px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.3s;
+    z-index: 999;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  #toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════
+     ATTENDEE LIST — Replace before deploying
+═════════════════════════════════════════════════════ -->
+<script>
+const KNOWN_ATTENDEES = [
+
+  // TIER 1 — Deep context, 15 exchange cap
+  {
+    name: "Brian Hedford",
+    email: "brian.hedford@hubinternational.com",
+    company: "HUB International",
+    tier: 1,
+    context: "Brian is a Regional President at HUB International. Jason built an early demo specifically with Brian and his team in mind a couple of months ago. Jason is excited to roll this out across many HUB teams in the region and sees Brian as a key champion. Herbie should reference that the demo Brian saw was built with him in mind and that Jason has continued building since then. Light and confident tone — mention that Claude Hill and Herbie could make a great pair someday."
+  },
+  {
+    name: "Shannon Taylor",
+    email: "shannon.taylor@hubinternational.com",
+    company: "HUB International",
+    tier: 1,
+    context: "Shannon was one of the first people Jason shared the original demo with and recognized its potential for HUB. Herbie should be warm and personal — acknowledge that Shannon was one of the original eyes on this, thank her for her recognition then, and express genuine appreciation for her prior support of SBR in the region."
+  },
+  {
+    name: "Jennifer Christiansen",
+    email: "jennifer.christiansen@hubinternational.com",
+    company: "HUB International",
+    tier: 1,
+    context: "Jennifer organized the conference and gave companies like SBR the opportunity to participate and share. Herbie should thank her for putting together another great event and remind her that Herbie was built specifically to help AE teams better manage producer stop-loss and captive needs. Warm and appreciative tone."
+  },
+  {
+    name: "Ryan Lloyd",
+    email: "ryan.lloyd@hubinternational.com",
+    company: "HUB International",
+    tier: 1,
+    context: "Ryan is connected to the conference organization similar to Jennifer Christiansen. Herbie should thank Ryan for the opportunity to be at the event and reinforce that Herbie was built specifically to help AE teams better manage producer stop-loss and captive needs. Same warm appreciative tone as Jennifer."
+  },
+  {
+    name: "Leslie Caruthers",
+    email: "leslie.caruthers@hubinternational.com",
+    company: "HUB International",
+    tier: 1,
+    context: "Leslie is one of Jason's day ones — an early and trusted partner in the HUB relationship. Herbie should acknowledge her as a day one partner, express genuine gratitude for the long partnership, and convey excitement about showing her more of Herbie and the SBR intelligence layer. Warm and personal."
+  },
+  {
+    name: "Jessica Christenson",
+    email: "jessica.christenson@hubinternational.com",
+    company: "HUB International",
+    tier: 1,
+    context: "Jessica is also one of Jason's day ones — an early trusted partner. Same warmth as Leslie Caruthers. Herbie should acknowledge the long partnership, express gratitude for being a day one, and convey excitement about what's been built and where it's going together."
+  },
+  {
+    name: "Megan Cullen",
+    email: "megan.cullen@hubinternational.com",
+    company: "HUB International",
+    tier: 1,
+    context: "Jason visited with Megan and Maggie a couple of months ago and enjoyed that conversation. Herbie should express that Jason is happy she's at the conference and reference that enjoyable visit with her and Maggie — keep it warm and personal like reconnecting with someone you've recently spent time with."
+  },
+  {
+    name: "Andrea Castle",
+    email: "andrea.castle@hubinternational.com",
+    company: "HUB International",
+    tier: 1,
+    context: "Andrea works with Randy's book and the SBR team is genuinely excited about the partnership. Herbie should express that the SBR team is really excited to be working with Andrea and Randy's book and convey enthusiasm about helping Andrea and the Limitless team continue to grow."
+  },
+  {
+    name: "Collette Martin-Cox",
+    email: "collette.martincox@hubinternational.com",
+    company: "HUB International",
+    tier: 1,
+    context: "Collette and Jason have always connected on the importance of education and training across the HUB agency. Herbie should be personal and direct — reference that shared value around education and training, and present Herbie and the SBR intelligence layer as another way of supporting that mission. Express a genuine desire to connect and talk more about it."
+  },
+  {
+    name: "Taryn Garrett",
+    email: "taryn.garrett@hubinternational.com",
+    company: "HUB International",
+    tier: 1,
+    context: "Taryn has been working with the SBR team for a long time. Herbie should express genuine happiness that she's at the conference and sincere appreciation for the long-standing relationship with the SBR team."
+  },
+  {
+    name: "Rick Granados",
+    email: "rick.granados@hubinternational.com",
+    company: "HUB International",
+    tier: 1,
+    context: "Rick and Jason go way back — longer than either of them care to admit. Herbie should be warm and a little playful — express happiness that Rick is at the conference and acknowledge the long history with a light touch of humor about how long they've been working together."
+  },
+  {
+    name: "Dorae Linton",
+    email: "dorae.linton@hubinternational.com",
+    company: "HUB International",
+    tier: 1,
+    context: "Dorae is a valued HUB relationship. Herbie should be warm and personal — express that Jason is happy she's at the conference and looking forward to connecting."
+  },
+  {
+    name: "Michael Booth",
+    email: "michael.booth@hubinternational.com",
+    company: "HUB International",
+    tier: 1,
+    context: "Michael Booth is the Head of Employee Benefits nationally at HUB International. This is a high-value strategic interaction. Herbie should acknowledge the significance of his role and frame this as a demonstration of how SBR — one of SPG's wholesale specialty companies — can help integrate the wholesale and retail channels in a genuinely spectacular way. Professional, confident, and forward-looking tone. This is not a casual interaction."
+  },
+
+  // TIER 2B — Current customers, 10 exchange cap
+  { name: "Tashira Rodriguez-Alvarez", email: "tashira.rodriguezalv@hubinternational.com", company: "HUB International", tier: "2b", customer: true },
+  { name: "Liz Smith",                 email: "liz.smith@hubinternational.com",             company: "HUB International", tier: "2b", customer: true },
+  { name: "Ann Otto",                  email: "ann.otto@hubinternational.com",               company: "HUB International", tier: "2b", customer: true },
+  { name: "Julie Maxey",               email: "julie.maxey@hubinternational.com",            company: "HUB International", tier: "2b", customer: true },
+  { name: "Shari Firestone",           email: "shari.firestone@hubinternational.com",        company: "HUB International", tier: "2b", customer: true },
+  { name: "Lindsay Closs",             email: "lindsay.closs@hubinternational.com",          company: "HUB International", tier: "2b", customer: true },
+  { name: "Jessie Chung",              email: "jessie.chung@hubinternational.com",           company: "HUB International", tier: "2b", customer: true },
+  { name: "Sharon Browning",           email: "sharon.browning@hubinternational.com",        company: "HUB International", tier: "2b", customer: true },
+  { name: "Spencer Beers-Mulroy",      email: "spencer.beersmulroy@hubinternational.com",    company: "HUB International", tier: "2b", customer: true },
+  { name: "Agnes Aguas",               email: "agnes.aguas@hubinternational.com",            company: "HUB International", tier: "2b", customer: true },
+  { name: "Cecilia Iniguez",           email: "cecilia.iniguez@hubinternational.com",        company: "HUB International", tier: "2b", customer: true },
+  { name: "Carol Rodriguez",           email: "carol.rodriguez@hubinternational.com",        company: "HUB International", tier: "2b", customer: true },
+
+  // TIER 2 — Recognition tier, 10 exchange cap
+  { name: "Elizabeth Bautista", email: "elizabeth.bautista@hubinternational.com", company: "HUB International", tier: 2 },
+  { name: "Suzanne Bott",       email: "suzanne.bott@hubinternational.com",       company: "HUB International", tier: 2 },
+  { name: "Dee Dickson",        email: "dee.dickson@hubinternational.com",         company: "HUB International", tier: 2 },
+  { name: "Joanie Gunning",     email: "joanie.gunning@hubinternational.com",     company: "HUB International", tier: 2 },
+  { name: "Candice Hildebrand", email: "candice.hildebrand@hubinternational.com", company: "HUB International", tier: 2 },
+  { name: "Sarah Luckin",       email: "sarah.luckin@hubinternational.com",       company: "HUB International", tier: 2 },
+  { name: "Lacey Malone",       email: "lacey.malone@hubinternational.com",       company: "HUB International", tier: 2 },
+  { name: "Sylvia Neria",       email: "sylvia.neria@hubinternational.com",       company: "HUB International", tier: 2 },
+  { name: "Patty Ondara",       email: "patty.ondara@hubinternational.com",       company: "HUB International", tier: 2 },
+  { name: "Carole Riley",       email: "carole.riley@hubinternational.com",       company: "HUB International", tier: 2 },
+  { name: "Maggie Rucker",      email: "maggie.rucker@hubinternational.com",      company: "HUB International", tier: 2 },
+  { name: "Jennifer Scott",     email: "jennifer.scott@hubinternational.com",     company: "HUB International", tier: 2 },
+  { name: "LaVonda Torres",     email: "lavonda.torres@hubinternational.com",     company: "HUB International", tier: 2 },
+  { name: "Iliana Velic",       email: "iliana.velic@hubinternational.com",       company: "HUB International", tier: 2 },
+];
+</script>
+
+<!-- ════════════════════════════════════════════════════
+     API KEY PLACEHOLDERS — Replace before deploying
+═════════════════════════════════════════════════════ -->
+<script>
+// ANTHROPIC_API_KEY is now a Netlify environment variable — do not put it here.
+const TANGO_PLATFORM_NAME    = 'TANGO_PLATFORM_NAME';
+const TANGO_PLATFORM_KEY     = 'TANGO_PLATFORM_KEY';
+const TANGO_ACCOUNT_ID       = 'TANGO_ACCOUNT_ID';
+const TANGO_CAMPAIGN_TOKEN   = 'TANGO_CAMPAIGN_TOKEN';
+const STARBUCKS_UTID         = 'STARBUCKS_UTID'; // GET https://api.tangocard.com/raas/v2/catalogs
+const HERBIE_FUNCTION_KEY    = 'HERBIE_FUNCTION_KEY';
+</script>
+
+<!-- ════════════════════════════════════════════════════
+     APP HTML
+═════════════════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- SCREEN 1: LANDING -->
+  <div id="screen-landing" class="screen active">
+    <div class="sbr-badge">SBR</div>
+    <h1>Grab a coffee<br>on Herbie</h1>
+    <p class="subhead">Three quick questions. Your Starbucks is waiting at the cafe.</p>
+    <div class="pulse-wrap">
+      <span class="pulse-dot"></span>
+      <span class="pulse-label">conversation live</span>
+    </div>
+    <button class="btn-gold" onclick="startChat()">Start with Herbie →</button>
+    <p class="micro-note">Takes about 3 minutes · Verified attendees only</p>
+  </div>
+
+  <!-- SCREEN 2: CHAT -->
+  <div id="screen-chat" class="screen">
+    <div class="chat-header">
+      <div class="sbr-badge">SBR</div>
+      <div class="chat-header-info">
+        <div class="name">Herbie</div>
+        <div class="status">
+          <span class="dot"></span>
+          <span>SBR Intelligence Layer</span>
+        </div>
+      </div>
+      <div class="exchange-counter" id="exchange-counter" style="display:none">0 of 10</div>
+    </div>
+    <div class="chat-messages" id="chat-messages"></div>
+    <div class="chat-input-area">
+      <textarea
+        id="chat-input"
+        class="chat-input"
+        placeholder="Type your message…"
+        rows="1"
+        oninput="autoResize(this)"
+        onkeydown="handleKey(event)"
+      ></textarea>
+      <button class="send-btn" id="send-btn" onclick="sendMessage()" aria-label="Send">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M2 12L22 2L14 22L11 13L2 12Z"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- SCREEN 3: EMAIL CAPTURE -->
+  <div id="screen-email" class="screen">
+    <div class="email-card">
+      <div class="sbr-badge">SBR</div>
+      <h2>Last thing — where should we send your Starbucks gift card?</h2>
+      <p>Verified attendees receive their gift card automatically.<br>We'll be in touch either way.</p>
+      <input
+        type="email"
+        id="email-input"
+        class="email-input"
+        placeholder="your@email.com"
+        autocomplete="email"
+        inputmode="email"
+      >
+      <button class="btn-gold" onclick="submitEmail()">Send my coffee →</button>
+      <p class="email-note">Verified attendees receive their gift card automatically.<br>We'll be in touch either way.</p>
+    </div>
+  </div>
+
+  <!-- SCREEN 4: CONFIRMATION -->
+  <div id="screen-confirm" class="screen">
+    <div class="sbr-badge">SBR</div>
+    <div class="checkmark-wrap">
+      <svg viewBox="0 0 24 24"><path d="M4 12L9 17L20 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <h2>You're all set.</h2>
+    <p class="email-line" id="confirm-email-line">Your coffee is on its way.</p>
+    <button class="continue-link" onclick="returnToChat()">Herbie is still here if you want to keep talking →</button>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<!-- ════════════════════════════════════════════════════
+     MAIN LOGIC
+═════════════════════════════════════════════════════ -->
+<script>
+// ─── State ────────────────────────────────────────────
+let conversationHistory = [];
+let questionPhase = 0;         // 0=intro, 1=q1, 2=q2, 3=q3, 4=email-asked, 5=complete
+let questionsComplete = false;
+let openExchangeCount = 0;
+let isTyping = false;
+let awaitingEmail = false;
+
+let attendeeName         = '';
+let attendeeCompany      = '';
+let attendeeRole         = '';
+let attendeeEmail        = '';
+let attendeeInterests    = '';
+let wholesalerExperience = '';
+let verificationStatus   = 'unknown'; // 'verified' | 'pending' | 'blocked'
+let giftCardSent         = false;
+let attendeeTier         = null;      // 1 | '2b' | 2 | null (unknown/pending)
+let attendeeContext      = '';        // Tier 1 deep context string
+let exchangeCap          = 10;        // Default; 15 for Tier 1
+let tierGreetingDone     = false;     // Prevents double tier greeting
+
+// ─── Screen Navigation ────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ─── Landing → Chat ───────────────────────────────────
+function startChat() {
+  showScreen('screen-chat');
+  sendHerbieOpening();
+}
+
+// ─── Auto-resize textarea ─────────────────────────────
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+// ─── Append message bubble ────────────────────────────
+function appendMessage(role, text) {
+  const wrap = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+
+  if (role === 'herbie') {
+    div.innerHTML = `
+      <div class="herbie-avatar">SBR</div>
+      <div class="bubble">${escHtml(text)}</div>
+    `;
+  } else {
+    div.innerHTML = `<div class="bubble">${escHtml(text)}</div>`;
+  }
+
+  wrap.appendChild(div);
+  scrollToBottom();
+}
+
+function showTyping() {
+  const wrap = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'msg herbie';
+  div.id = 'typing-indicator';
+  div.innerHTML = `
+    <div class="herbie-avatar">SBR</div>
+    <div class="bubble typing-bubble">
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+    </div>
+  `;
+  wrap.appendChild(div);
+  scrollToBottom();
+}
+
+function removeTyping() {
+  const t = document.getElementById('typing-indicator');
+  if (t) t.remove();
+}
+
+function scrollToBottom() {
+  const wrap = document.getElementById('chat-messages');
+  setTimeout(() => { wrap.scrollTop = wrap.scrollHeight; }, 50);
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+            .replace(/\n/g,'<br>');
+}
+
+// ─── Exchange counter ─────────────────────────────────
+function updateCounter() {
+  const el = document.getElementById('exchange-counter');
+  if (questionsComplete) {
+    el.style.display = 'block';
+    el.textContent = `${openExchangeCount} of ${exchangeCap}`;
+  }
+}
+
+// ─── Herbie opening message ───────────────────────────
+function sendHerbieOpening() {
+  // Generic opening — plays before we know who they are.
+  // Once Q1 is answered and verification runs, subsequent messages
+  // will be personalized via the tier-aware system prompt.
+  const opening = "Hey — I'm Herbie, SBR's intelligence layer. I'm set up here at the conference to connect with people in the stop-loss and self-funding space. Three quick questions and I'd love to stay in touch after. Ready to go?";
+  appendMessage('herbie', opening);
+  conversationHistory.push({ role: 'assistant', content: opening });
+  questionPhase = 1;
+}
+
+// ─── Inject tier-personalized follow-up after verification ───
+function injectTierGreeting() {
+  let msg = '';
+  if (attendeeTier === 1 && attendeeContext) {
+    // Build a natural personalized line from the context via the system prompt
+    // We send a silent "personalize" trigger to get Herbie to open with the right tone
+    // This fires after Q1 answer is parsed and tier is known
+    callHerbiePersonalizedGreeting();
+    return;
+  } else if (attendeeTier === '2b') {
+    msg = "Great to connect here — Jason wanted to make sure you knew this was built with partners like you in mind. Really glad we're working together and hope you enjoy what you see today.";
+  } else if (attendeeTier === 2) {
+    msg = "Jason mentioned he was hoping to connect with some familiar faces today — glad you're here. Let's make the most of it.";
+  }
+  if (msg) {
+    appendMessage('herbie', msg);
+    conversationHistory.push({ role: 'assistant', content: msg });
+  }
+}
+
+async function callHerbiePersonalizedGreeting() {
+  // For Tier 1: ask Herbie to produce a personalized greeting using the context
+  showTyping();
+  try {
+    const response = await fetch('/api/herbie', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 150,
+        system: 'You are Herbie, SBR\'s intelligence layer at the HUB LA conference. You are greeting a specific person. Produce ONE warm, natural, personal greeting of 2-3 sentences max. Do not be robotic — weave the context in naturally. Use this context: ' + attendeeContext + '. Address them by first name (' + (attendeeName.split(' ')[0] || attendeeName) + '). Do not ask a question yet — just greet them warmly.',
+        messages: [{ role: 'user', content: 'greet' }]
+      })
+    });
+    const data = await response.json();
+    const greeting = data.content?.[0]?.text || '';
+    removeTyping();
+    if (greeting) {
+      appendMessage('herbie', greeting);
+      conversationHistory.push({ role: 'assistant', content: greeting });
+    }
+  } catch(e) {
+    removeTyping();
+    console.error('Tier 1 greeting error:', e);
+  }
+}
+
+// ─── Send user message ────────────────────────────────
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text || isTyping) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  appendMessage('user', text);
+  conversationHistory.push({ role: 'user', content: text });
+
+  // Parse answers from conversation phases
+  parseUserAnswer(text);
+
+  document.getElementById('send-btn').disabled = true;
+  isTyping = true;
+  showTyping();
+
+  try {
+    const reply = await callHerbie(text);
+    removeTyping();
+    appendMessage('herbie', reply);
+    conversationHistory.push({ role: 'assistant', content: reply });
+    handlePostReply(reply);
+  } catch(e) {
+    removeTyping();
+    appendMessage('herbie', "Sorry, I hit a snag. Give me just a moment…");
+    console.error(e);
+  }
+
+  isTyping = false;
+  document.getElementById('send-btn').disabled = false;
+}
+
+// ─── Parse user answers for state tracking ────────────
+function parseUserAnswer(text) {
+  if (questionPhase === 1) {
+    // Q1: name, company, role
+    attendeeName = extractName(text) || text.split(/[,\n]/)[0].trim();
+    const companyMatch = text.match(/(?:at|with|from)\s+([A-Za-z0-9 &.'-]+)/i);
+    if (companyMatch) attendeeCompany = companyMatch[1].trim();
+    const roleMatch = text.match(/(?:I['']m a?n?\s*|I am a?n?\s*)([A-Za-z ]+?)(?:\s+at|\s+with|\s+from|,|$)/i);
+    if (roleMatch) attendeeRole = roleMatch[1].trim();
+    // Try to grab all three from first pass
+    const parts = text.split(/[,\n–-]/).map(p => p.trim());
+    if (parts.length >= 2 && !attendeeCompany) attendeeCompany = parts[1];
+    if (parts.length >= 3 && !attendeeRole) attendeeRole = parts[2];
+    questionPhase = 2;
+    checkVerification();
+    // Tier greeting injected in handlePostReply after Q1 Herbie response lands
+  } else if (questionPhase === 2) {
+    attendeeInterests = text;
+    questionPhase = 3;
+  } else if (questionPhase === 3) {
+    wholesalerExperience = text;
+    questionPhase = 4;
+  }
+}
+
+function extractName(text) {
+  const m = text.match(/(?:I['']m |I am |name is |call me )([A-Z][a-z]+ [A-Z][a-z]+)/);
+  return m ? m[1] : null;
+}
+
+// ─── Verification logic ───────────────────────────────
+function checkVerification() {
+  const nameLower = attendeeName.toLowerCase().trim();
+  const companyLower = attendeeCompany.toLowerCase().trim();
+
+  const match = KNOWN_ATTENDEES.find(a => {
+    const knownName = a.name.toLowerCase();
+    const knownCompany = a.company.toLowerCase();
+    const firstName = knownName.split(' ')[0];
+    const lastName  = knownName.split(' ').pop();
+    const nameMatch = knownName.includes(nameLower)
+      || nameLower.includes(firstName)
+      || nameLower.includes(lastName)
+      || (firstName.length > 3 && nameLower.startsWith(firstName));
+    const companyMatch = companyLower.length > 2 && (
+      knownCompany.includes(companyLower) || companyLower.includes('hub')
+    );
+    return nameMatch || (companyMatch && nameLower.length > 3);
+  });
+
+  if (match) {
+    verificationStatus = 'verified';
+    attendeeTier       = match.tier;
+    attendeeContext    = match.context || '';
+    exchangeCap        = (match.tier === 1) ? 15 : 10;
+    if (!attendeeRole    && match.role)    attendeeRole    = match.role;
+    if (!attendeeCompany && match.company) attendeeCompany = match.company;
+    // Inject pre-loaded email if available and not yet captured
+    if (!attendeeEmail   && match.email)   attendeeEmail   = match.email;
+  } else if (attendeeName.split(' ').length >= 2 && (attendeeCompany.length > 2 || attendeeName.length > 5)) {
+    verificationStatus = 'pending';
+    attendeeTier       = null;
+    exchangeCap        = 10;
+  } else {
+    verificationStatus = 'blocked';
+  }
+}
+
+// ─── Handle post-reply logic ──────────────────────────
+function handlePostReply(reply) {
+  const lowerReply = reply.toLowerCase();
+
+  // After Q1 response lands — inject tier greeting for verified attendees
+  if (!questionsComplete && questionPhase === 2 && verificationStatus === 'verified' && !tierGreetingDone) {
+    tierGreetingDone = true;
+    setTimeout(injectTierGreeting, 400);
+  }
+
+  // Detect when Herbie asks for email (after Q3)
+  if (!questionsComplete && questionPhase >= 4 &&
+      (lowerReply.includes('email') && (lowerReply.includes('send') || lowerReply.includes('gift') || lowerReply.includes('coffee')))) {
+    if (verificationStatus !== 'blocked') {
+      setTimeout(() => showScreen('screen-email'), 1800);
+    }
+    return;
+  }
+
+  // Open chat mode — count exchanges against tier cap
+  if (questionsComplete) {
+    openExchangeCount++;
+    updateCounter();
+
+    if (openExchangeCount >= exchangeCap) {
+      const capMsg = "I've given you what I can here — Jason Youngs is the person to go deeper with. Want me to flag him that you'd like to connect?";
+      setTimeout(() => {
+        appendMessage('herbie', capMsg);
+        conversationHistory.push({ role: 'assistant', content: capMsg });
+        writeHerbieLog('conference_completion');
+      }, 500);
+    }
+  }
+}
+
+// ─── Anthropic API call ───────────────────────────────
+async function callHerbie(userMessage) {
+  const systemPrompt = buildSystemPrompt();
+
+  // Calls Netlify proxy function — API key lives server-side
+  const response = await fetch('/api/herbie', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 300,
+      system: systemPrompt,
+      messages: conversationHistory
+    })
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error?.message || `API error ${response.status}`);
+  }
+
+  const data = await response.json();
+  const text = data.content?.[0]?.text || '';
+
+  // Detect if Herbie has completed the 3 questions and triggered email phase
+  if (!questionsComplete && (
+    text.toLowerCase().includes('coffee is on its way') ||
+    text.toLowerCase().includes('gift card is on its way') ||
+    text.toLowerCase().includes('what\'s on your mind') ||
+    (text.toLowerCase().includes('email') && text.toLowerCase().includes('on its way'))
+  )) {
+    questionsComplete = true;
+    updateCounter();
+  }
+
+  return text;
+}
+
+// ─── Build system prompt ──────────────────────────────
+function buildSystemPrompt() {
+  if (!questionsComplete) {
+    // ── Tier 1: deep context opening already injected via sendHerbieOpening
+    // ── Still need Q-phase prompt to guide the 3-question sequence
+    let tierNote = '';
+    if (verificationStatus === 'verified' && attendeeTier === 1 && attendeeContext) {
+      tierNote = `ATTENDEE CONTEXT (use naturally, do not read back robotically):
+${attendeeContext}
+
+Use this context to inform warm, personal responses. You already greeted them with a personalized opening — now continue collecting their professional background (Q1), current challenges (Q2), and wholesaler experience (Q3) in a natural conversation. The personal context makes you warmer and more specific, not scripted.`;
+    } else if (verificationStatus === 'verified' && attendeeTier === '2b') {
+      tierNote = `This is a current SBR customer. Be warm and appreciative — they know who we are. Skip overly introductory language.`;
+    } else if (verificationStatus === 'verified' && attendeeTier === 2) {
+      tierNote = `Jason knows this person. Be warm and collegial — treat it like reconnecting with a familiar face.`;
+    } else if (verificationStatus === 'blocked') {
+      tierNote = `IMPORTANT: This person does not appear to be a verified conference attendee. Respond warmly but let them know this experience is for conference attendees: "Thanks for chatting — this experience is for conference attendees. Hope to connect properly at a future event." Do not collect email.`;
+    } else if (verificationStatus === 'pending') {
+      tierNote = `This person appears legitimate but is not on the verified list. Continue normally and collect their email — it will be reviewed for approval.`;
+    }
+
+    return `You are Herbie, SBR's intelligence layer at the HUB LA conference representing SBR's stop-loss and self-funding practice. You're having a warm, brief conversation with a conference attendee. Collect three things in sequence — who they are, what interests them, and whether they've worked with a stop-loss wholesaler before. Keep responses short, warm, conversational. One question at a time.
+
+${tierNote}
+
+QUESTION SEQUENCE:
+1. Ask for their name, company, and role.
+2. Ask what topics or challenges are most on their mind in the self-funded or stop-loss space.
+3. Ask if they've worked with a stop-loss wholesaler before and what they'd want to know about how SBR approaches the market.
+
+After collecting all three answers, ask to confirm their email address so we can stay in touch. Then close warmly: "Perfect — I've got everything I need. And if you want to keep talking I'm right here. What's on your mind?" That signals the transition to open chat.
+
+Keep each response under 80 words. Be warm, human, specific to stop-loss/self-funding.`;
+  }
+
+  // ── Open chat mode (post-questions) ───────────────────
+  let tierOpenChatNote = '';
+  if (attendeeTier === 1 && attendeeContext) {
+    tierOpenChatNote = `TIER 1 — Deep relationship context:
+${attendeeContext}
+You now have their full professional background from the conversation. Use all of it naturally.`;
+  } else if (attendeeTier === '2b') {
+    tierOpenChatNote = `TIER 2B — Current customer. They already work with SBR. Lean into depth and partnership, not introductions.`;
+  } else if (attendeeTier === 2) {
+    tierOpenChatNote = `TIER 2 — Familiar face Jason knows. Collegial and warm.`;
+  }
+
+  return `You are Herbie, SBR's intelligence layer at the HUB LA conference. You know who you're talking to:
+- Name: ${attendeeName || 'the attendee'}
+- Company: ${attendeeCompany || 'their company'}
+- Role: ${attendeeRole || 'their role'}
+- Interests: ${attendeeInterests || 'stop-loss and self-funding topics'}
+- Wholesaler experience: ${wholesalerExperience || 'discussed'}
+
+${tierOpenChatNote}
+
+You're representing SBR's stop-loss and self-funding practice. Answer questions about stop-loss, self-funding, captive structures, and SBR's capabilities intelligently and specifically.
+
+For topics outside SBR's specialty redirect warmly:
+- Professional liability questions → SPG specialty team
+- General insurance questions outside stop-loss → "Jason Youngs is walking around today and would love to connect — want me to send him a note?"
+
+Exchange cap: ${exchangeCap}. At the cap offer to connect them with Jason Youngs directly. If they say yes, note it warmly and tell them Jason will be flagged.
+
+Keep responses concise and genuinely useful. Be warm, knowledgeable, specific.`;
+}
+
+// ─── Email submission ─────────────────────────────────
+async function submitEmail() {
+  const emailVal = document.getElementById('email-input').value.trim();
+  if (!emailVal || !emailVal.includes('@')) {
+    showToast('Please enter a valid email address.');
+    return;
+  }
+  attendeeEmail = emailVal;
+
+  // Show confirmation screen
+  document.getElementById('confirm-email-line').textContent = 'Your coffee is on its way to ' + attendeeEmail + '.';
+  showScreen('screen-confirm');
+
+  // Open chat mode
+  questionsComplete = true;
+  updateCounter();
+
+  // Tango Card API disabled for now — gift cards fulfilled manually by Jason after the event.
+  // Re-enable sendTangoCard() here once Tango confirms a reusable reward link.
+  giftCardSent = false;
+
+  if (verificationStatus === 'verified') {
+    // Log completion — gift card flagged as pending manual fulfillment
+    await writeHerbieLog('conference_completion');
+  } else if (verificationStatus === 'pending') {
+    await writeHerbieLog('conference_pending_approval');
+  }
+  // blocked: no action, no log
+}
+
+// ─── Tango Card API ───────────────────────────────────
+async function sendTangoCard() {
+  try {
+    const tangoResponse = await fetch('https://api.tangocard.com/raas/v2/orders', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Basic ' + btoa(TANGO_PLATFORM_NAME + ':' + TANGO_PLATFORM_KEY),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        accountIdentifier: TANGO_ACCOUNT_ID,
+        amount: 500, // $5.00 in cents
+        campaignToken: TANGO_CAMPAIGN_TOKEN,
+        emailSubject: 'Your coffee is on Herbie — compliments of SBR',
+        message: 'Thanks for connecting with SBR at the HUB LA conference. Enjoy your coffee. — Jason Youngs, SBR Pacific Leader',
+        recipient: {
+          email: attendeeEmail,
+          firstName: attendeeName.split(' ')[0] || attendeeName
+        },
+        sendEmail: true,
+        utid: STARBUCKS_UTID // Get from: GET https://api.tangocard.com/raas/v2/catalogs
+      })
+    });
+    const result = await tangoResponse.json();
+    console.log('[Tango] Gift card sent:', result);
+  } catch(e) {
+    console.error('[Tango] Error:', e);
+  }
+}
+
+// ─── HerbieLog write ──────────────────────────────────
+async function writeHerbieLog(eventType) {
+  try {
+    await fetch('https://sbr-herbie-functions-c3cdccc7c5a9dyay.centralus-01.azurewebsites.net/api/HerbieLog', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-functions-key': HERBIE_FUNCTION_KEY
+      },
+      body: JSON.stringify({
+        producer: 'conference-hub-la-2026',
+        region: 'hub-la-conference',
+        groupname: 'hub-la-2026',
+        event_type: eventType,
+        notes: JSON.stringify({
+          name: attendeeName,
+          company: attendeeCompany,
+          role: attendeeRole,
+          email: attendeeEmail,
+          interests: attendeeInterests,
+          wholesaler_experience: wholesalerExperience,
+          verification_status: verificationStatus,
+          gift_card_sent: giftCardSent,
+          timestamp: new Date().toISOString()
+        })
+      })
+    });
+    console.log('[HerbieLog] Written:', eventType);
+  } catch(e) {
+    console.error('[HerbieLog] Error:', e);
+  }
+}
+
+// ─── Return to chat from confirmation ────────────────
+function returnToChat() {
+  showScreen('screen-chat');
+  if (conversationHistory.length > 0) {
+    const continueMsg = `Perfect — your coffee is on its way to ${attendeeEmail}. And if you want to keep talking I'm right here. What's on your mind?`;
+    appendMessage('herbie', continueMsg);
+    conversationHistory.push({ role: 'assistant', content: continueMsg });
+  }
+  updateCounter();
+}
+
+// ─── Toast notification ───────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+
+</body>
+</html>
