@@ -623,14 +623,14 @@ const HERBIE_FUNCTION_KEY    = 'HERBIE_FUNCTION_KEY';
   <!-- SCREEN 1: LANDING -->
   <div id="screen-landing" class="screen active">
     <div class="sbr-badge">SBR</div>
-    <h1>Grab a coffee<br>on Herbie</h1>
-    <p class="subhead">Three quick questions. Your Starbucks is waiting at the cafe.</p>
+    <h1>Enter to win —<br>meet Herbie and you're in.</h1>
+    <p class="subhead">Three quick questions. One raffle entry. Takes about three minutes.</p>
     <div class="pulse-wrap">
       <span class="pulse-dot"></span>
       <span class="pulse-label">conversation live</span>
     </div>
     <button class="btn-gold" onclick="startChat()">Start with Herbie →</button>
-    <p class="micro-note">Takes about 3 minutes · Verified attendees only</p>
+    <p class="micro-note">Verified attendees only · Prize to be announced</p>
   </div>
 
   <!-- SCREEN 2: CHAT -->
@@ -668,8 +668,8 @@ const HERBIE_FUNCTION_KEY    = 'HERBIE_FUNCTION_KEY';
   <div id="screen-email" class="screen">
     <div class="email-card">
       <div class="sbr-badge">SBR</div>
-      <h2>Last thing — where should we send your Starbucks gift card?</h2>
-      <p>Verified attendees receive their gift card automatically.<br>We'll be in touch either way.</p>
+      <h2>Last thing — where should we send your raffle confirmation?</h2>
+      <p>Drop your email and you're officially entered.<br>Prize to be announced — winner contacted after the event.</p>
       <input
         type="email"
         id="email-input"
@@ -678,8 +678,8 @@ const HERBIE_FUNCTION_KEY    = 'HERBIE_FUNCTION_KEY';
         autocomplete="email"
         inputmode="email"
       >
-      <button class="btn-gold" onclick="submitEmail()">Send my coffee →</button>
-      <p class="email-note">Verified attendees receive their gift card automatically.<br>We'll be in touch either way.</p>
+      <button class="btn-gold" onclick="submitEmail()">Enter the raffle →</button>
+      <p class="email-note">Verified attendees are entered automatically.<br>Prize to be announced — winner contacted after the event.</p>
     </div>
   </div>
 
@@ -690,7 +690,7 @@ const HERBIE_FUNCTION_KEY    = 'HERBIE_FUNCTION_KEY';
       <svg viewBox="0 0 24 24"><path d="M4 12L9 17L20 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </div>
     <h2>You're all set.</h2>
-    <p class="email-line" id="confirm-email-line">Your coffee is on its way.</p>
+    <p class="email-line" id="confirm-email-line">You're entered. Good luck — winner announced at the end of the event. Jason will be in touch.</p>
     <button class="continue-link" onclick="returnToChat()">Herbie is still here if you want to keep talking →</button>
   </div>
 
@@ -1071,7 +1071,7 @@ QUESTION SEQUENCE:
 2. Ask what topics or challenges are most on their mind in the self-funded or stop-loss space.
 3. Ask if they've worked with a stop-loss wholesaler before and what they'd want to know about how SBR approaches the market.
 
-After collecting all three answers, ask to confirm their email address so we can stay in touch. Then close warmly: "Perfect — I've got everything I need. And if you want to keep talking I'm right here. What's on your mind?" That signals the transition to open chat.
+After collecting all three answers, ask to confirm their email address so they can be entered in the raffle. Then close warmly: "Perfect — you're entered. Good luck with the prize, and I'm right here if you want to keep talking. What's on your mind?" That signals the transition to open chat.
 
 Keep each response under 80 words. Be warm, human, specific to stop-loss/self-funding.`;
   }
@@ -1118,7 +1118,7 @@ async function submitEmail() {
   attendeeEmail = emailVal;
 
   // Show confirmation screen
-  document.getElementById('confirm-email-line').textContent = 'Your coffee is on its way to ' + attendeeEmail + '.';
+  document.getElementById('confirm-email-line').textContent = "You're entered. Good luck — winner announced at the end of the event. Jason will be in touch.";
   showScreen('screen-confirm');
 
   // Open chat mode
@@ -1139,6 +1139,9 @@ async function submitEmail() {
 }
 
 // ─── Tango Card API ───────────────────────────────────
+// ── Tango Card STUBBED — raffle mechanic is active ──────
+// To reactivate: uncomment and call sendTangoCard() in submitEmail()
+/*
 async function sendTangoCard() {
   try {
     const tangoResponse = await fetch('https://api.tangocard.com/raas/v2/orders', {
@@ -1167,6 +1170,7 @@ async function sendTangoCard() {
     console.error('[Tango] Error:', e);
   }
 }
+*/
 
 // ─── HerbieLog write ──────────────────────────────────
 async function writeHerbieLog(eventType) {
@@ -1190,7 +1194,8 @@ async function writeHerbieLog(eventType) {
           interests: attendeeInterests,
           wholesaler_experience: wholesalerExperience,
           verification_status: verificationStatus,
-          gift_card_sent: giftCardSent,
+          raffle_entry: (verificationStatus === 'verified'),
+          gift_card_sent: false,
           timestamp: new Date().toISOString()
         })
       })
@@ -1205,7 +1210,7 @@ async function writeHerbieLog(eventType) {
 function returnToChat() {
   showScreen('screen-chat');
   if (conversationHistory.length > 0) {
-    const continueMsg = `Perfect — your coffee is on its way to ${attendeeEmail}. And if you want to keep talking I'm right here. What's on your mind?`;
+    const continueMsg = "You're entered in the raffle — good luck! And if you want to keep talking I'm right here. What's on your mind?";
     appendMessage('herbie', continueMsg);
     conversationHistory.push({ role: 'assistant', content: continueMsg });
   }
