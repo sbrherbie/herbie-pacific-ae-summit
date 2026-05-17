@@ -624,13 +624,13 @@ const HERBIE_FUNCTION_KEY    = 'HERBIE_FUNCTION_KEY';
   <div id="screen-landing" class="screen active">
     <div class="sbr-badge">SBR</div>
     <h1>Enter to win —<br>meet Herbie and you're in.</h1>
-    <p class="subhead">Three quick questions. One raffle entry. Takes about three minutes.</p>
+    <p class="subhead">Three quick questions. One raffle entry. Win a $250 Visa gift card.</p>
     <div class="pulse-wrap">
       <span class="pulse-dot"></span>
       <span class="pulse-label">conversation live</span>
     </div>
     <button class="btn-gold" onclick="startChat()">Start with Herbie →</button>
-    <p class="micro-note">Verified attendees only · Prize to be announced</p>
+    <p class="micro-note">Verified attendees only · Win a $250 Visa gift card</p>
   </div>
 
   <!-- SCREEN 2: CHAT -->
@@ -669,7 +669,7 @@ const HERBIE_FUNCTION_KEY    = 'HERBIE_FUNCTION_KEY';
     <div class="email-card">
       <div class="sbr-badge">SBR</div>
       <h2>Last thing — where should we send your raffle confirmation?</h2>
-      <p>Drop your email and you're officially entered.<br>Prize to be announced — winner contacted after the event.</p>
+      <p>Drop your email and you're officially entered.<br>Enter to win a $250 Visa gift card — winner announced at the end of the event by Jason Youngs.</p>
       <input
         type="email"
         id="email-input"
@@ -704,7 +704,7 @@ const HERBIE_FUNCTION_KEY    = 'HERBIE_FUNCTION_KEY';
 <script>
 // ─── State ────────────────────────────────────────────
 let conversationHistory = [];
-let questionPhase = 0;         // 0=intro, 1=q1, 2=q2, 3=q3, 4=email-asked, 5=complete
+let questionPhase = 0;         // 0=opening sent | 1=hub gate | 2=topic | 3=name+verify | 4=email | 5=complete
 let questionsComplete = false;
 let openExchangeCount = 0;
 let isTyping = false;
@@ -816,7 +816,7 @@ function sendHerbieOpening() {
   const opening = "Hi there! I'm Herbie! It's great to be here at the Pacific AE Summit. I'm here with Jason and the SBR intelligence layer to connect with people in the self-funding, stop-loss, and captive space. Three easy questions to get you into our raffle. You ready?";
   appendMessage('herbie', opening);
   conversationHistory.push({ role: 'assistant', content: opening });
-  questionPhase = 0; // 0=hub/vendor gate, 1=topic question, 2=name, 3=open chat
+  questionPhase = 0; // waiting for first reply
 }
 
 // ─── Inject tier-personalized follow-up after verification ───
@@ -902,47 +902,40 @@ async function sendMessage() {
 
 // ─── Parse user answers for state tracking ────────────
 function parseUserAnswer(text) {
-  const lower = text.toLowerCase();
+  const lower = text.toLowerCase().trim();
 
   if (questionPhase === 0) {
-    // Any reply to the opening — advance to HUB/vendor gate
-    questionPhase = 0.5;
-
-  } else if (questionPhase === 0.5) {
-    // Detect HUB vs non-HUB
-    const isHub = lower.includes('hub') || lower.includes('international') ||
-                  lower.includes('account exec') || lower.includes('producer') ||
-                  lower.includes('ae ') || lower.includes('benefits');
-    const isVendor = lower.includes('vendor') || lower.includes('carrier') ||
-                     lower.includes('consultant') || lower.includes('not hub') ||
-                     lower.includes("i'm not") || lower.includes('i am not');
-    if (isHub) {
-      attendeeCompany = 'HUB International';
-      questionPhase = 1; // Move to topic question
-    } else if (isVendor) {
-      questionPhase = -1; // Non-HUB — end gracefully
-    }
-    // Ambiguous: stay at 0.5, let Herbie clarify
+    // First reply to opening — move to HUB gate
+    questionPhase = 1;
 
   } else if (questionPhase === 1) {
-    // Self-funded topic answer
-    attendeeInterests = text;
-    questionPhase = 2; // Ask for name
+    // HUB or vendor gate
+    const isHub = lower.includes('hub') || lower.includes('international') ||
+                  lower.includes('account exec') || lower.includes('producer') ||
+                  lower.includes('benefits') || lower.includes('ae');
+    const isVendor = lower.includes('vendor') || lower.includes('carrier') ||
+                     lower.includes('not hub') || lower.includes("i'm not") ||
+                     lower.includes('i am not') || lower.includes('consultant');
+    if (isHub) {
+      attendeeCompany = 'HUB International';
+      questionPhase = 2;
+    } else if (isVendor) {
+      questionPhase = -1;
+    }
+    // Ambiguous: stay at 1, Herbie will clarify
 
   } else if (questionPhase === 2) {
-    // Name only
-    attendeeName = text.split(/[,\n]/)[0].trim();
-    console.log('[DEBUG] Raw name input:', text);
-    console.log('[DEBUG] attendeeName before clean:', attendeeName);
-    console.log('[DEBUG] attendeeCompany:', attendeeCompany);
-    console.log('[DEBUG] questionPhase:', questionPhase);
-    checkVerification();
-    console.log('[DEBUG] verificationStatus:', verificationStatus);
-    console.log('[DEBUG] attendeeTier:', attendeeTier);
-    // Tier greeting fires in handlePostReply after Herbie's response lands
+    // Topic / challenge answer
+    attendeeInterests = text;
+    questionPhase = 3;
 
   } else if (questionPhase === 3) {
-    // Email capture — handled by screen transition
+    // Name capture — clean and verify
+    attendeeName = cleanName(text);
+    checkVerification();
+
+  } else if (questionPhase === 4) {
+    // Email phase — handled by screen
   }
 }
 
@@ -953,36 +946,30 @@ function extractName(text) {
 
 // ─── Verification logic ───────────────────────────────
 function checkVerification() {
-  // Clean up attendeeName — extract just the name words, strip filler phrases
-  attendeeName = cleanName(attendeeName);
-  const nameLower = attendeeName.toLowerCase().trim();
-  const companyLower = attendeeCompany.toLowerCase().trim();
-  const nameWords = nameLower.split(/\s+/);
+  const cleaned   = cleanName(attendeeName);
+  const nameLower = cleaned.toLowerCase().trim();
+  const words     = nameLower.split(/\s+/).filter(w => w.length >= 3);
+
 
   const match = KNOWN_ATTENDEES.find(a => {
-    const knownName    = a.name.toLowerCase();
-    const knownFirst   = knownName.split(' ')[0];
-    const knownLast    = knownName.split(' ').pop();
+    const full      = a.name.toLowerCase();
+    const firstName = full.split(' ')[0];   // e.g. "brian"
+    const lastName  = full.split(' ').pop(); // e.g. "hedford"
 
-    // First name match (4+ char first names only to avoid false positives)
-    const firstMatch = knownFirst.length >= 4 && nameWords.some(w => w === knownFirst || knownFirst.startsWith(w) && w.length >= 4);
-    // Last name match
-    const lastMatch  = nameWords.some(w => w === knownLast && w.length >= 4);
-    // Full name contained anywhere
-    const fullMatch  = nameLower.includes(knownFirst) && nameLower.includes(knownLast);
-    // Known name contains what they typed
-    const reverseMatch = knownName.includes(nameLower) && nameLower.length > 4;
+    // Full name match
+    if (nameLower.includes(firstName) && nameLower.includes(lastName)) return true;
+    // Last name match (4+ chars)
+    if (lastName.length >= 4 && words.includes(lastName)) return true;
+    // First name match (4+ chars) — only with company confirmation
+    if (firstName.length >= 4 && words.includes(firstName) && attendeeCompany === 'HUB International') return true;
+    // Single word that matches last name partially
+    if (words.some(w => lastName.startsWith(w) && w.length >= 5)) return true;
 
-    const nameMatch = firstMatch || lastMatch || fullMatch || reverseMatch;
-
-    // Company match — we already set HUB from the gate, so this helps
-    const companyMatch = companyLower.includes('hub') || attendeeCompany === 'HUB International';
-
-    // Name match alone is enough; company narrows ambiguous cases
-    return fullMatch || lastMatch || (firstMatch && companyMatch) || reverseMatch;
+    return false;
   });
 
   if (match) {
+    attendeeName       = match.name; // normalize to canonical name
     verificationStatus = 'verified';
     attendeeTier       = match.tier;
     attendeeContext    = match.context || '';
@@ -990,11 +977,12 @@ function checkVerification() {
     if (!attendeeRole    && match.role)    attendeeRole    = match.role;
     if (!attendeeCompany && match.company) attendeeCompany = match.company;
     if (!attendeeEmail   && match.email)   attendeeEmail   = match.email;
-  } else if (nameLower.split(/\s+/).length >= 2) {
-    // Has a first and last name but not on the list — pending
+    questionPhase = 4; // advance to email collection
+  } else if (words.length >= 2) {
     verificationStatus = 'pending';
     attendeeTier       = null;
     exchangeCap        = 10;
+    questionPhase = 4;
   } else {
     verificationStatus = 'blocked';
   }
@@ -1016,17 +1004,18 @@ function cleanName(raw) {
 function handlePostReply(reply) {
   const lowerReply = reply.toLowerCase();
 
-  // After Q1 response lands — inject tier greeting for verified attendees
-  if (!questionsComplete && questionPhase === 3 && verificationStatus === 'verified' && !tierGreetingDone) {
-    tierGreetingDone = true;
-    setTimeout(injectTierGreeting, 400);
-  }
+  // Non-HUB — conversation ended, do nothing
+  if (questionPhase === -1) return;
 
-  // Detect when Herbie asks for email (after Q3)
-  if (!questionsComplete && questionPhase >= 3 &&
-      (lowerReply.includes('email') && (lowerReply.includes('send') || lowerReply.includes('gift') || lowerReply.includes('coffee')))) {
+  // Phase 4: name was just captured and verification ran — show email screen
+  // Tier greeting fires first for verified Tier 1 attendees
+  if (!questionsComplete && questionPhase === 4) {
+    if (verificationStatus === 'verified' && !tierGreetingDone) {
+      tierGreetingDone = true;
+      setTimeout(injectTierGreeting, 400);
+    }
     if (verificationStatus !== 'blocked') {
-      setTimeout(() => showScreen('screen-email'), 1800);
+      setTimeout(() => showScreen('screen-email'), 2400);
     }
     return;
   }
@@ -1094,37 +1083,38 @@ function buildSystemPrompt() {
   }
 
   // Phase 0 or 0.5: Ask HUB or vendor
-  if (questionPhase === 0 || questionPhase === 0.5) {
+  if (questionPhase === 0) {
     return "You are Herbie, SBR's intelligence layer at the Pacific AE Summit. The attendee just responded to your opening. Ask them warmly whether they are with HUB International or one of the many great vendors and partners here supporting HUB. Light and friendly — one question only.";
   }
 
-  // Phases 1–3: Question sequence
-  if (!questionsComplete) {
+  // Phase 1: HUB gate — waiting for or just received HUB/vendor answer
+  if (questionPhase === 1) {
+    return "You are Herbie, SBR's intelligence layer at the Pacific AE Summit. Ask the attendee warmly whether they are with HUB International or one of the many great vendors and partners here. Light and friendly — one question only.";
+  }
+
+  // Phase 2: Topic question — they confirmed HUB
+  if (questionPhase === 2) {
+    return "You are Herbie at the Pacific AE Summit. The attendee just confirmed they are with HUB. Respond enthusiastically — something like 'Love that! Thank you for having SBR here.' Then ask: what is the most pressing self-funded topic they could use assistance with right now? Think broad — stop loss, TPAs, fully insured transition, internal education. Under 60 words.";
+  }
+
+  // Phase 3: Name capture — they answered the topic question
+  if (questionPhase === 3) {
+    return "You are Herbie at the Pacific AE Summit. The attendee just shared their biggest challenge — thank them genuinely for that. Now ask for their first and last name only so you can get them entered in the raffle. Under 40 words.";
+  }
+
+  // Phase 4: Post-verification — email screen is about to appear
+  if (questionPhase === 4 && !questionsComplete) {
     let tierNote = '';
     if (verificationStatus === 'verified' && attendeeTier === 1 && attendeeContext) {
-      tierNote = 'ATTENDEE CONTEXT (use naturally): ' + attendeeContext;
+      tierNote = 'IMPORTANT CONTEXT about this person (use naturally, not robotically): ' + attendeeContext;
     } else if (verificationStatus === 'verified' && attendeeTier === '2b') {
-      tierNote = 'This is a current SBR customer. Be warm and appreciative.';
+      tierNote = 'This is a current SBR customer. Acknowledge the existing relationship warmly.';
     } else if (verificationStatus === 'verified' && attendeeTier === 2) {
       tierNote = 'Jason knows this person. Be warm and collegial.';
-    } else if (verificationStatus === 'blocked') {
-      tierNote = 'This person does not appear to be a verified HUB attendee. Wrap up warmly.';
     } else if (verificationStatus === 'pending') {
-      tierNote = 'Not on the verified list but appears legitimate. Continue normally.';
+      tierNote = 'Not on the verified list but appears to be a legitimate HUB attendee.';
     }
-
-    let instruction = '';
-    if (questionPhase === 1) {
-      instruction = "The attendee just confirmed they are with HUB. Respond enthusiastically — thank them for having SBR here. Then ask: what would they say is the most pressing self-funded topic they could use assistance with right now? Think broad — stop loss, TPAs, fully insured transition, internal education. Keep it warm and conversational.";
-    } else if (questionPhase === 2) {
-      instruction = "The attendee just shared their biggest self-funded challenge. Thank them genuinely. Now ask for their first and last name only — you need it to get them entered in the raffle.";
-    } else if (questionPhase === 3) {
-      instruction = "You now have their name. " + tierNote + " Acknowledge them warmly by name. Let them know they are entered and ask for their email address so you can send their raffle confirmation.";
-    } else {
-      instruction = "Continue warmly. Collect their email to complete their raffle entry.";
-    }
-
-    return "You are Herbie, SBR's intelligence layer at the Pacific AE Summit. Keep responses short, warm, conversational — under 60 words. One thing at a time. " + instruction;
+    return "You are Herbie at the Pacific AE Summit. You just received the attendee's name. " + tierNote + " Acknowledge them warmly by name. Tell them they are entered in the raffle and that the email screen is coming up for their confirmation. Under 50 words.";
   }
 
   // Open chat mode
