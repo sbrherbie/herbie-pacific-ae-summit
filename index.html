@@ -722,6 +722,7 @@ let attendeeTier         = null;      // 1 | '2b' | 2 | null (unknown/pending)
 let attendeeContext      = '';        // Tier 1 deep context string
 let exchangeCap          = 10;        // Default; 15 for Tier 1
 let tierGreetingDone     = false;     // Prevents double tier greeting
+let emailConfirmPending  = false;     // True when Herbie has asked for email confirmation
 
 // ─── Screen Navigation ────────────────────────────────
 function showScreen(id) {
@@ -877,6 +878,47 @@ async function sendMessage() {
   appendMessage('user', text);
   conversationHistory.push({ role: 'user', content: text });
 
+  // If waiting for email confirmation — intercept yes/no before normal flow
+  if (emailConfirmPending) {
+    const lower = text.toLowerCase().trim();
+    const isYes = lower.includes('yes') || lower.includes('sure') || lower.includes('ready') ||
+                  lower.includes('yep') || lower.includes('yeah') || lower.includes('ok') ||
+                  lower.includes('go') || lower.includes('absolutely') || lower === 'y';
+    const isNo  = lower.includes('no') || lower.includes('not') || lower.includes('later') ||
+                  lower.includes('skip') || lower.includes('maybe') || lower === 'n';
+    if (isYes) {
+      emailConfirmPending = false;
+      document.getElementById('send-btn').disabled = true;
+      isTyping = true;
+      showTyping();
+      setTimeout(() => {
+        removeTyping();
+        isTyping = false;
+        document.getElementById('send-btn').disabled = false;
+        showScreen('screen-email');
+      }, 600);
+      return;
+    } else if (isNo) {
+      emailConfirmPending = false;
+      questionsComplete = true;
+      updateCounter();
+      document.getElementById('send-btn').disabled = true;
+      isTyping = true;
+      showTyping();
+      setTimeout(() => {
+        removeTyping();
+        const welcomeBack = "Welcome back! Want to keep talking stop loss, or is there something else on your mind?";
+        appendMessage('herbie', welcomeBack);
+        conversationHistory.push({ role: 'assistant', content: welcomeBack });
+        isTyping = false;
+        document.getElementById('send-btn').disabled = false;
+      }, 800);
+      return;
+    }
+    // Ambiguous — fall through to normal Herbie response
+    emailConfirmPending = false;
+  }
+
   // Parse answers from conversation phases
   parseUserAnswer(text);
 
@@ -1007,16 +1049,15 @@ function handlePostReply(reply) {
   // Non-HUB — conversation ended, do nothing
   if (questionPhase === -1) return;
 
-  // Phase 4: name was just captured and verification ran — show email screen
-  // Tier greeting fires first for verified Tier 1 attendees
+  // Phase 4: name captured and verified — Herbie will ask to confirm email readiness
+  // Email screen only fires when user explicitly confirms (detected in sendMessage)
   if (!questionsComplete && questionPhase === 4) {
     if (verificationStatus === 'verified' && !tierGreetingDone) {
       tierGreetingDone = true;
       setTimeout(injectTierGreeting, 400);
     }
-    if (verificationStatus !== 'blocked') {
-      setTimeout(() => showScreen('screen-email'), 2400);
-    }
+    // Mark that we're waiting for email confirmation — sendMessage handles the yes/no
+    emailConfirmPending = true;
     return;
   }
 
@@ -1102,19 +1143,22 @@ function buildSystemPrompt() {
     return "You are Herbie at the Pacific AE Summit. The attendee just shared their biggest challenge — thank them genuinely for that. Now ask for their first and last name only so you can get them entered in the raffle. Under 40 words.";
   }
 
-  // Phase 4: Post-verification — email screen is about to appear
+  // Phase 4: Post-verification — acknowledge by name, ask if ready to enter email
   if (questionPhase === 4 && !questionsComplete) {
     let tierNote = '';
     if (verificationStatus === 'verified' && attendeeTier === 1 && attendeeContext) {
-      tierNote = 'IMPORTANT CONTEXT about this person (use naturally, not robotically): ' + attendeeContext;
+      tierNote = 'IMPORTANT CONTEXT about this person (use naturally, not robotically): ' + attendeeContext + ' ';
     } else if (verificationStatus === 'verified' && attendeeTier === '2b') {
-      tierNote = 'This is a current SBR customer. Acknowledge the existing relationship warmly.';
+      tierNote = 'This is a current SBR customer — acknowledge the existing relationship warmly. ';
     } else if (verificationStatus === 'verified' && attendeeTier === 2) {
-      tierNote = 'Jason knows this person. Be warm and collegial.';
+      tierNote = 'Jason knows this person — be warm and collegial. ';
     } else if (verificationStatus === 'pending') {
-      tierNote = 'Not on the verified list but appears to be a legitimate HUB attendee.';
+      tierNote = 'Not on the verified list but appears legitimate — continue warmly. ';
     }
-    return "You are Herbie at the Pacific AE Summit. You just received the attendee's name. " + tierNote + " Acknowledge them warmly by name. Tell them they are entered in the raffle and that the email screen is coming up for their confirmation. Under 50 words.";
+    return "You are Herbie at the Pacific AE Summit. " + tierNote +
+      "Acknowledge the attendee warmly by their first name (" + (attendeeName.split(' ')[0] || attendeeName) + "). " +
+      "Then ask: 'Ready to drop your email so we can enter you in the raffle?' " +
+      "One warm sentence of acknowledgment, then the question. Under 50 words total. Do not repeat their name twice.";
   }
 
   // Open chat mode
@@ -1242,7 +1286,7 @@ async function writeHerbieLog(eventType) {
 function returnToChat() {
   showScreen('screen-chat');
   if (conversationHistory.length > 0) {
-    const continueMsg = "You're entered in the raffle — good luck! And if you want to keep talking I'm right here. What's on your mind?";
+    const continueMsg = "Welcome back! Want to keep talking stop loss, or anything else on your mind?";
     appendMessage('herbie', continueMsg);
     conversationHistory.push({ role: 'assistant', content: continueMsg });
   }
