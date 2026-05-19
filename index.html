@@ -483,7 +483,7 @@ const KNOWN_ATTENDEES = [
     email: "brian.hedford@hubinternational.com",
     company: "HUB International",
     tier: 1,
-    context: "Brian is a Regional President at HUB International. Jason built an early demo specifically with Brian and his team in mind a couple of months ago. Jason is excited to roll this out across many HUB teams in the region and sees Brian as a key champion. Herbie should reference that the demo Brian saw was built with him in mind and that Jason has continued building since then. Light and confident tone — mention that Claude Hill and Herbie could make a great pair someday."
+    context: "Brian is a Regional President at HUB International. Jason built an early demo specifically with Brian and his team in mind a couple of months ago. Jason is excited to roll this out across many HUB teams in the region and sees Brian as a key champion. Herbie should reference that the demo Brian saw was built with him in mind and that Jason has continued building since then. Light and confident tone — mention that Claudezilla and Herbie could make a great pair someday."
   },
   {
     name: "Shannon Taylor",
@@ -624,14 +624,14 @@ const HERBIE_FUNCTION_KEY    = 'HERBIE_FUNCTION_KEY';
   <div id="screen-landing" class="screen active">
     <div class="sbr-badge">SBR</div>
     <h1>Meet Herbie</h1>
-    <p class="subhead" style="font-size:18px;color:#fff;margin-bottom:6px;">Get a free phone charger</p>
-    <p class="subhead">Enter to win one of two $250 Visa gift cards</p>
+    <p class="subhead" style="font-size:17px;color:#fff;margin-bottom:6px;">Get a free phone charger</p>
+    <p class="subhead" style="margin-bottom:6px;">Enter to win one of two $250 Visa gift cards</p>
     <div class="pulse-wrap">
       <span class="pulse-dot"></span>
       <span class="pulse-label">conversation live</span>
     </div>
     <button class="btn-gold" onclick="startChat()">Get Started →</button>
-    <p class="micro-note">Powered by SBR · HUB Pacific AE Summit · May 20</p>
+    <p class="micro-note">Powered by SBR · HUB Pacific AE Summit · May 18–20</p>
   </div>
 
   <!-- SCREEN 2: CHAT -->
@@ -740,7 +740,7 @@ function showScreen(id) {
 // ─── Start ────────────────────────────────────────────
 function startChat() {
   showScreen('screen-chat');
-  const opening = "Hey! I'm Herbie — SBR's intelligence layer. Quick check before we dive in — are you here with us today as part of the HUB team?";
+  const opening = "Hey! I'm Herbie, here with Jason representing SBR's intelligence layer at the Pacific AE Summit! Quick check — part of the HUB team?";
   appendMessage('herbie', opening);
   conversationHistory.push({ role: 'assistant', content: opening });
   questionPhase = 0;
@@ -927,7 +927,7 @@ function buildSystemPrompt() {
 
   // Phase 0: HUB confirmed — ask for name
   if (questionPhase === 0) {
-    return "You are Herbie, SBR's intelligence layer at the HUB Pacific AE Summit. The attendee just confirmed they are with HUB. Respond: 'Perfect — let's go. Here's the first easy one. What's your name? First and last — and make sure I get the spelling right 😄' Exactly that. No variation.";
+    return "You are Herbie, SBR's intelligence layer at the HUB Pacific AE Summit. The attendee just confirmed they are with HUB. Respond warmly — thank them for having SBR at the Summit, express genuine excitement to be here. Then ask for their name: 'What's your name? First and last — and make sure I get the spelling right 😄' Keep it to 2-3 sentences total.";
   }
 
   // Phase 1: Name captured — personalized acknowledgment + Q2
