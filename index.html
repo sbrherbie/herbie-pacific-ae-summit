@@ -1050,13 +1050,9 @@ function handlePostReply(reply) {
   if (questionPhase === -1) return;
 
   // Phase 4: name captured and verified — Herbie will ask to confirm email readiness
-  // Email screen only fires when user explicitly confirms (detected in sendMessage)
+  // The phase 4 system prompt handles personalized acknowledgment — no separate tier greeting needed
   if (!questionsComplete && questionPhase === 4) {
-    if (verificationStatus === 'verified' && !tierGreetingDone) {
-      tierGreetingDone = true;
-      setTimeout(injectTierGreeting, 400);
-    }
-    // Mark that we're waiting for email confirmation — sendMessage handles the yes/no
+    tierGreetingDone = true; // Suppress injectTierGreeting — phase 4 prompt covers it
     emailConfirmPending = true;
     return;
   }
