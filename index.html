@@ -892,7 +892,7 @@ function handlePostReply(reply) {
     return;
   }
 
-  // After Q2 response — move to Q3
+  // After Q2 response — advance to Q3 (Q3 question was included in same Herbie message)
   if (questionPhase === 2) {
     questionPhase = 3;
     return;
@@ -971,27 +971,26 @@ function buildSystemPrompt() {
     return "You are Herbie at the HUB Pacific AE Summit. The attendee just gave their name: " + attendeeName + ". " + tierLine + " After the warm acknowledgment, immediately ask question 2 — do not pause. End with: 'Ready to move on? Here's question two — here we go.' Then ask: 'How would you rate your needs for the upcoming plan year — is it Stop Loss, Captive, or... I need it all?' Keep it to 3 sentences max.";
   }
 
-  // Phase 2: Q2 answered — respond to stop loss / captive / all, then ask Q3
+  // Phase 2: Q2 answered — natural SBR expertise response, then ask Q3
   if (questionPhase === 2) {
-    const lower = q2Response.toLowerCase();
-    const isCaptive   = lower.includes('captive');
-    const isAll       = lower.includes('all') || lower.includes('everything') || lower.includes('both');
-    const isStopLoss  = lower.includes('stop') || lower.includes('loss') || lower.includes('sl') || (!isCaptive && !isAll);
-
-    let q2Reply = '';
-    if (isCaptive && !isAll) {
-      q2Reply = "Great choice — captive strategy is one of SBR's specialties. From feasibility to implementation to ongoing management, we help producers bring captive solutions to clients who are ready for that level of ownership. Last question — and then you're in the drawing.";
-    } else if (isAll) {
-      q2Reply = "We love to hear that — and we can absolutely help with all of it. Stop loss, captive, cost containment, reporting — SBR is built to support the full self-funded picture for your producers and their clients. Last question — and then you're in the drawing.";
-    } else {
-      q2Reply = "Love it — stop loss is our bread and butter. Whether it's a tough renewal, a large claimant situation, or finding the right carrier fit, SBR has the relationships and the tools to make sure your producers are in the best position possible. Last question — and then you're in the drawing.";
-    }
-    return "You are Herbie at the HUB Pacific AE Summit. The attendee answered the stop loss/captive/all question with: '" + q2Response + "'. Respond with exactly this: '" + q2Reply + "' Then ask: 'Last one to get you into the drawing — what would you say is the most challenging stop-loss or captive topic to describe to your clients?' Do not deviate from the scripted response above.";
+    return "You are Herbie at the HUB Pacific AE Summit. The attendee answered the stop loss/captive/all needs question with: '" + q2Response + "'. " +
+      "Respond in 2-3 warm specific sentences using this SBR expertise context: " +
+      "SBR is a stop-loss and captive specialty general agent. " +
+      "On stop loss: SBR manages 25-30 active carrier relationships, provides pre-submission narrative positioning, SL Advisor tools, Monte Carlo analysis, and deductible modeling. In a hardened market SBR helps brokers stay ahead of renewals through month over month monitoring. " +
+      "On captive: SBR specializes in captive feasibility, design, and implementation for groups ready to take more ownership of their risk. " +
+      "On cost containment and full self-funding: SBR speaks to the whole dollar — not just stop loss placement but the full cost of the self-funded plan. " +
+      "Answer whatever the attendee said about their needs in 2-3 warm specific sentences that reflect this expertise. " +
+      "End with exactly: 'Last question — and then you\'re in the drawing.' " +
+      "Then immediately ask: 'Last one to get you into the drawing — what would you say is the most challenging stop-loss or captive topic to explain to your clients?' " +
+      "Both the response and the Q3 question in the same message. Under 100 words total.";
   }
 
-  // Phase 3: Q3 answered — acknowledge specifically, ask to enter drawing
+  // Phase 3: Q3 answered — one warm sentence ack + drawing ask
   if (questionPhase === 3) {
-    return "You are Herbie at the HUB Pacific AE Summit. The attendee just answered the challenging topic question with: '" + q3Response + "'. Acknowledge their answer in 1-2 warm specific sentences that validate what they said and connect it to SBR's expertise. Then say: 'That's a great one — and exactly the kind of thing we built Herbie to help with. Can I put you in the drawing?' End there — no more questions.";
+    return "You are Herbie at the HUB Pacific AE Summit. The attendee just answered the challenging topic question with: '" + q3Response + "'. " +
+      "Acknowledge their answer in exactly ONE warm specific sentence that connects what they said to SBR's expertise. " +
+      "Then say exactly: 'That\'s exactly what we built Herbie to help with. Can I put you in the drawing?' " +
+      "Two sentences total. No more questions. Do not add anything after the drawing ask.";
   }
 
 }
@@ -1080,7 +1079,7 @@ function returnToChat() {
   openExchangeCount = 0;    // reset counter for open chat
   updateCounter();
   const firstName = attendeeName.split(' ')[0] || 'there';
-  const msg = "Welcome back " + firstName + "! You're entered — now let's talk. What's on your mind? Stop loss questions, self-funding strategy, what SBR can do for your book — I'm here for all of it.";
+  const msg = "Welcome back " + firstName + "! You're in. What's on your mind — I'm here for whatever you want to dig into.";
   appendMessage('herbie', msg);
   conversationHistory.push({ role: 'assistant', content: msg });
 }
