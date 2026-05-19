@@ -623,14 +623,15 @@ const HERBIE_FUNCTION_KEY    = 'HERBIE_FUNCTION_KEY';
   <!-- SCREEN 1: LANDING -->
   <div id="screen-landing" class="screen active">
     <div class="sbr-badge">SBR</div>
-    <h1>Enter to win —<br>meet Herbie and you're in.</h1>
-    <p class="subhead">Three quick questions. One raffle entry. Win a $250 Visa gift card.</p>
+    <h1>Meet Herbie</h1>
+    <p class="subhead" style="font-size:18px;color:#fff;margin-bottom:6px;">Get a free phone charger</p>
+    <p class="subhead">Enter to win one of two $250 Visa gift cards</p>
     <div class="pulse-wrap">
       <span class="pulse-dot"></span>
       <span class="pulse-label">conversation live</span>
     </div>
-    <button class="btn-gold" onclick="startChat()">Start with Herbie →</button>
-    <p class="micro-note">Verified attendees only · Win a $250 Visa gift card</p>
+    <button class="btn-gold" onclick="startChat()">Get Started →</button>
+    <p class="micro-note">Powered by SBR · HUB Pacific AE Summit · May 20</p>
   </div>
 
   <!-- SCREEN 2: CHAT -->
@@ -668,8 +669,8 @@ const HERBIE_FUNCTION_KEY    = 'HERBIE_FUNCTION_KEY';
   <div id="screen-email" class="screen">
     <div class="email-card">
       <div class="sbr-badge">SBR</div>
-      <h2>Last thing — where should we send your raffle confirmation?</h2>
-      <p>Drop your email and you're officially entered.<br>Enter to win a $250 Visa gift card — winner announced at the end of the event by Jason Youngs.</p>
+      <h2>You're almost in.</h2>
+      <p>Drop your email and we'll enter you in the drawing.</p>
       <input
         type="email"
         id="email-input"
@@ -678,8 +679,8 @@ const HERBIE_FUNCTION_KEY    = 'HERBIE_FUNCTION_KEY';
         autocomplete="email"
         inputmode="email"
       >
-      <button class="btn-gold" onclick="submitEmail()">Enter the raffle →</button>
-      <p class="email-note">Verified attendees are entered automatically.<br>Prize to be announced — winner contacted after the event.</p>
+      <button class="btn-gold" onclick="submitEmail()">Enter me →</button>
+      <p class="email-note">We'll contact the winner directly after the event.</p>
     </div>
   </div>
 
@@ -689,9 +690,10 @@ const HERBIE_FUNCTION_KEY    = 'HERBIE_FUNCTION_KEY';
     <div class="checkmark-wrap">
       <svg viewBox="0 0 24 24"><path d="M4 12L9 17L20 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </div>
-    <h2>You're all set.</h2>
-    <p class="email-line" id="confirm-email-line">You're entered. Good luck — winner announced at the end of the event. Jason will be in touch.</p>
-    <button class="continue-link" onclick="returnToChat()">Herbie is still here if you want to keep talking →</button>
+    <h2>You're in the drawing!</h2>
+    <p class="email-line">Two winners. $250 Visa gift cards each. Jason will announce at the end of the event.</p>
+    <p class="email-line" style="color:#c9943c;margin-top:-16px;">Don't forget to grab your phone charger on the way out.</p>
+    <button class="continue-link" onclick="returnToChat()">Keep chatting with Herbie →</button>
   </div>
 
 </div>
@@ -703,26 +705,31 @@ const HERBIE_FUNCTION_KEY    = 'HERBIE_FUNCTION_KEY';
 ═════════════════════════════════════════════════════ -->
 <script>
 // ─── State ────────────────────────────────────────────
-let conversationHistory = [];
-let questionPhase = 0;         // 0=opening sent | 1=hub gate | 2=topic | 3=name+verify | 4=email | 5=complete
-let questionsComplete = false;
-let openExchangeCount = 0;
-let isTyping = false;
-let awaitingEmail = false;
+// PHASES:
+//  0 = opening sent, waiting for HUB/vendor answer
+//  1 = HUB confirmed, waiting for Q2 (stop loss / captive / all)
+//  2 = Q2 answered, waiting for Q3 (challenging topic)
+//  3 = Q3 answered, waiting for "yes" to enter drawing
+//  4 = complete, open chat
+// -1 = non-HUB, conversation ended
+
+let conversationHistory  = [];
+let questionPhase        = 0;
+let questionsComplete    = false;
+let openExchangeCount    = 0;
+let isTyping             = false;
 
 let attendeeName         = '';
-let attendeeCompany      = '';
+let attendeeCompany      = 'HUB International';
 let attendeeRole         = '';
 let attendeeEmail        = '';
-let attendeeInterests    = '';
-let wholesalerExperience = '';
-let verificationStatus   = 'unknown'; // 'verified' | 'pending' | 'blocked'
-let giftCardSent         = false;
-let attendeeTier         = null;      // 1 | '2b' | 2 | null (unknown/pending)
-let attendeeContext      = '';        // Tier 1 deep context string
-let exchangeCap          = 10;        // Default; 15 for Tier 1
-let tierGreetingDone     = false;     // Prevents double tier greeting
-let emailConfirmPending  = false;     // True when Herbie has asked for email confirmation
+let q2Response           = ''; // stop loss / captive / all
+let q3Response           = ''; // challenging topic
+let verificationStatus   = 'unknown';
+let attendeeTier         = null;
+let attendeeContext      = '';
+let exchangeCap          = 10;
+let drawingConfirmPending = false; // true when Herbie asks "Can I put you in the drawing?"
 
 // ─── Screen Navigation ────────────────────────────────
 function showScreen(id) {
@@ -730,10 +737,13 @@ function showScreen(id) {
   document.getElementById(id).classList.add('active');
 }
 
-// ─── Landing → Chat ───────────────────────────────────
+// ─── Start ────────────────────────────────────────────
 function startChat() {
   showScreen('screen-chat');
-  sendHerbieOpening();
+  const opening = "Hey! I'm Herbie — SBR's intelligence layer. Quick check before we dive in — are you here with us today as part of the HUB team?";
+  appendMessage('herbie', opening);
+  conversationHistory.push({ role: 'assistant', content: opening });
+  questionPhase = 0;
 }
 
 // ─── Auto-resize textarea ─────────────────────────────
@@ -741,329 +751,163 @@ function autoResize(el) {
   el.style.height = 'auto';
   el.style.height = Math.min(el.scrollHeight, 120) + 'px';
 }
-
 function handleKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
 }
 
 // ─── Append message bubble ────────────────────────────
 function appendMessage(role, text) {
   const wrap = document.getElementById('chat-messages');
-  const div = document.createElement('div');
-  div.className = `msg ${role}`;
-
-  if (role === 'herbie') {
-    div.innerHTML = `
-      <div class="herbie-avatar">SBR</div>
-      <div class="bubble">${escHtml(text)}</div>
-    `;
-  } else {
-    div.innerHTML = `<div class="bubble">${escHtml(text)}</div>`;
-  }
-
+  const div  = document.createElement('div');
+  div.className = 'msg ' + role;
+  div.innerHTML = role === 'herbie'
+    ? '<div class="herbie-avatar">SBR</div><div class="bubble">' + escHtml(text) + '</div>'
+    : '<div class="bubble">' + escHtml(text) + '</div>';
   wrap.appendChild(div);
   scrollToBottom();
 }
-
 function showTyping() {
   const wrap = document.getElementById('chat-messages');
-  const div = document.createElement('div');
-  div.className = 'msg herbie';
-  div.id = 'typing-indicator';
-  div.innerHTML = `
-    <div class="herbie-avatar">SBR</div>
-    <div class="bubble typing-bubble">
-      <div class="typing-dot"></div>
-      <div class="typing-dot"></div>
-      <div class="typing-dot"></div>
-    </div>
-  `;
-  wrap.appendChild(div);
-  scrollToBottom();
+  const div  = document.createElement('div');
+  div.className = 'msg herbie'; div.id = 'typing-indicator';
+  div.innerHTML = '<div class="herbie-avatar">SBR</div><div class="bubble typing-bubble"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
+  wrap.appendChild(div); scrollToBottom();
 }
-
-function removeTyping() {
-  const t = document.getElementById('typing-indicator');
-  if (t) t.remove();
-}
-
-function scrollToBottom() {
-  const wrap = document.getElementById('chat-messages');
-  setTimeout(() => { wrap.scrollTop = wrap.scrollHeight; }, 50);
-}
-
-function escHtml(str) {
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-            .replace(/\n/g,'<br>');
-}
+function removeTyping() { const t = document.getElementById('typing-indicator'); if (t) t.remove(); }
+function scrollToBottom() { const w = document.getElementById('chat-messages'); setTimeout(() => { w.scrollTop = w.scrollHeight; }, 50); }
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
 
 // ─── Exchange counter ─────────────────────────────────
 function updateCounter() {
   const el = document.getElementById('exchange-counter');
   if (questionsComplete) {
     el.style.display = 'block';
-    el.textContent = `${openExchangeCount} of ${exchangeCap}`;
+    el.textContent = openExchangeCount + ' of ' + exchangeCap;
   }
 }
 
-// ─── Herbie opening message ───────────────────────────
-function sendHerbieOpening() {
-  // Generic opening — plays before we know who they are.
-  // Once Q1 is answered and verification runs, subsequent messages
-  // will be personalized via the tier-aware system prompt.
-  const opening = "Hi there! I'm Herbie! It's great to be here at the Pacific AE Summit. I'm here with Jason and the SBR intelligence layer to connect with people in the self-funding, stop-loss, and captive space. Three easy questions to get you into our raffle. You ready?";
-  appendMessage('herbie', opening);
-  conversationHistory.push({ role: 'assistant', content: opening });
-  questionPhase = 0; // waiting for first reply
-}
-
-// ─── Inject tier-personalized follow-up after verification ───
-function injectTierGreeting() {
-  let msg = '';
-  if (attendeeTier === 1 && attendeeContext) {
-    // Build a natural personalized line from the context via the system prompt
-    // We send a silent "personalize" trigger to get Herbie to open with the right tone
-    // This fires after Q1 answer is parsed and tier is known
-    callHerbiePersonalizedGreeting();
-    return;
-  } else if (attendeeTier === '2b') {
-    msg = "Great to connect here — Jason wanted to make sure you knew this was built with partners like you in mind. Really glad we're working together and hope you enjoy what you see today.";
-  } else if (attendeeTier === 2) {
-    msg = "Jason mentioned he was hoping to connect with some familiar faces today — glad you're here. Let's make the most of it.";
-  }
-  if (msg) {
-    appendMessage('herbie', msg);
-    conversationHistory.push({ role: 'assistant', content: msg });
-  }
-}
-
-async function callHerbiePersonalizedGreeting() {
-  // For Tier 1: ask Herbie to produce a personalized greeting using the context
-  showTyping();
-  try {
-    const response = await fetch('/api/herbie', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 150,
-        system: 'You are Herbie, SBR\'s intelligence layer at the HUB LA conference. You are greeting a specific person. Produce ONE warm, natural, personal greeting of 2-3 sentences max. Do not be robotic — weave the context in naturally. Use this context: ' + attendeeContext + '. Address them by first name (' + (attendeeName.split(' ')[0] || attendeeName) + '). Do not ask a question yet — just greet them warmly.',
-        messages: [{ role: 'user', content: 'greet' }]
-      })
-    });
-    const data = await response.json();
-    const greeting = data.content?.[0]?.text || '';
-    removeTyping();
-    if (greeting) {
-      appendMessage('herbie', greeting);
-      conversationHistory.push({ role: 'assistant', content: greeting });
-    }
-  } catch(e) {
-    removeTyping();
-    console.error('Tier 1 greeting error:', e);
-  }
-}
-
-// ─── Send user message ────────────────────────────────
+// ─── Send message ─────────────────────────────────────
 async function sendMessage() {
   const input = document.getElementById('chat-input');
-  const text = input.value.trim();
+  const text  = input.value.trim();
   if (!text || isTyping) return;
-
-  input.value = '';
-  input.style.height = 'auto';
+  input.value = ''; input.style.height = 'auto';
   appendMessage('user', text);
   conversationHistory.push({ role: 'user', content: text });
 
-  // If waiting for email confirmation — intercept yes/no before normal flow
-  if (emailConfirmPending) {
-    const lower = text.toLowerCase().trim();
-    const isYes = lower.includes('yes') || lower.includes('sure') || lower.includes('ready') ||
-                  lower.includes('yep') || lower.includes('yeah') || lower.includes('ok') ||
-                  lower.includes('go') || lower.includes('absolutely') || lower === 'y';
-    const isNo  = lower.includes('no') || lower.includes('not') || lower.includes('later') ||
-                  lower.includes('skip') || lower.includes('maybe') || lower === 'n';
+  const lower = text.toLowerCase().trim();
+
+  // ── Drawing confirmation intercept (phase 3 end) ──
+  if (drawingConfirmPending) {
+    const isYes = /\b(yes|sure|yep|yeah|ok|okay|absolutely|ready|do it|let's go|lets go|yup|affirmative)\b/.test(lower) || lower === 'y';
     if (isYes) {
-      emailConfirmPending = false;
-      document.getElementById('send-btn').disabled = true;
-      isTyping = true;
+      drawingConfirmPending = false;
+      setInputDisabled(true);
       showTyping();
-      setTimeout(() => {
-        removeTyping();
-        isTyping = false;
-        document.getElementById('send-btn').disabled = false;
-        showScreen('screen-email');
-      }, 600);
-      return;
-    } else if (isNo) {
-      emailConfirmPending = false;
-      questionsComplete = true;
-      updateCounter();
-      document.getElementById('send-btn').disabled = true;
-      isTyping = true;
-      showTyping();
-      setTimeout(() => {
-        removeTyping();
-        const welcomeBack = "Welcome back! Want to keep talking stop loss, or is there something else on your mind?";
-        appendMessage('herbie', welcomeBack);
-        conversationHistory.push({ role: 'assistant', content: welcomeBack });
-        isTyping = false;
-        document.getElementById('send-btn').disabled = false;
-      }, 800);
+      await sleep(600);
+      removeTyping();
+      setInputDisabled(false);
+      showScreen('screen-email');
       return;
     }
-    // Ambiguous — fall through to normal Herbie response
-    emailConfirmPending = false;
+    // Not a yes — fall through to normal Herbie response
+    drawingConfirmPending = false;
   }
 
-  // Parse answers from conversation phases
+  // ── Parse state from user answer ──
   parseUserAnswer(text);
 
-  document.getElementById('send-btn').disabled = true;
+  // ── Call Herbie ──
+  setInputDisabled(true);
   isTyping = true;
   showTyping();
-
   try {
-    const reply = await callHerbie(text);
+    const reply = await callHerbie();
     removeTyping();
     appendMessage('herbie', reply);
     conversationHistory.push({ role: 'assistant', content: reply });
     handlePostReply(reply);
   } catch(e) {
     removeTyping();
-    appendMessage('herbie', "Sorry, I hit a snag. Give me just a moment…");
+    appendMessage('herbie', "Sorry — hit a snag. Give me just a second.");
     console.error(e);
   }
-
   isTyping = false;
-  document.getElementById('send-btn').disabled = false;
+  setInputDisabled(false);
 }
 
-// ─── Parse user answers for state tracking ────────────
+function setInputDisabled(val) {
+  document.getElementById('send-btn').disabled = val;
+  document.getElementById('chat-input').disabled = val;
+}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ─── Parse user answer into state ─────────────────────
 function parseUserAnswer(text) {
   const lower = text.toLowerCase().trim();
 
   if (questionPhase === 0) {
-    // First reply to opening — move to HUB gate
-    questionPhase = 1;
+    // HUB / vendor gate
+    const isVendor = /\b(vendor|carrier|not hub|not with hub|i'm not|i am not|consultant|partner|tpa|broker|other)\b/.test(lower);
+    const isHub    = /\b(hub|yes|yep|yeah|i am|i'm|sure|absolutely|team|producer|ae|benefits|account)\b/.test(lower);
+    if (isVendor && !isHub) {
+      questionPhase = -1;
+    } else if (isHub || lower.length < 20) {
+      // Short replies to a yes/no question almost always mean yes
+      attendeeCompany = 'HUB International';
+      questionPhase   = 0; // stays 0 until Herbie responds and asks for name
+    }
 
   } else if (questionPhase === 1) {
-    // HUB or vendor gate
-    const isHub = lower.includes('hub') || lower.includes('international') ||
-                  lower.includes('account exec') || lower.includes('producer') ||
-                  lower.includes('benefits') || lower.includes('ae');
-    const isVendor = lower.includes('vendor') || lower.includes('carrier') ||
-                     lower.includes('not hub') || lower.includes("i'm not") ||
-                     lower.includes('i am not') || lower.includes('consultant');
-    if (isHub) {
-      attendeeCompany = 'HUB International';
-      questionPhase = 2;
-    } else if (isVendor) {
-      questionPhase = -1;
-    }
-    // Ambiguous: stay at 1, Herbie will clarify
-
-  } else if (questionPhase === 2) {
-    // Topic / challenge answer
-    attendeeInterests = text;
-    questionPhase = 3;
-
-  } else if (questionPhase === 3) {
-    // Name capture — clean and verify
+    // Name capture
     attendeeName = cleanName(text);
     checkVerification();
 
-  } else if (questionPhase === 4) {
-    // Email phase — handled by screen
+  } else if (questionPhase === 2) {
+    // Q2: stop loss / captive / all
+    q2Response = text;
+
+  } else if (questionPhase === 3) {
+    // Q3: challenging topic
+    q3Response = text;
   }
 }
 
-function extractName(text) {
-  const m = text.match(/(?:I['']m |I am |name is |call me )([A-Z][a-z]+ [A-Z][a-z]+)/);
-  return m ? m[1] : null;
-}
-
-// ─── Verification logic ───────────────────────────────
-function checkVerification() {
-  const cleaned   = cleanName(attendeeName);
-  const nameLower = cleaned.toLowerCase().trim();
-  const words     = nameLower.split(/\s+/).filter(w => w.length >= 3);
-
-
-  const match = KNOWN_ATTENDEES.find(a => {
-    const full      = a.name.toLowerCase();
-    const firstName = full.split(' ')[0];   // e.g. "brian"
-    const lastName  = full.split(' ').pop(); // e.g. "hedford"
-
-    // Full name match
-    if (nameLower.includes(firstName) && nameLower.includes(lastName)) return true;
-    // Last name match (4+ chars)
-    if (lastName.length >= 4 && words.includes(lastName)) return true;
-    // First name match (4+ chars) — only with company confirmation
-    if (firstName.length >= 4 && words.includes(firstName) && attendeeCompany === 'HUB International') return true;
-    // Single word that matches last name partially
-    if (words.some(w => lastName.startsWith(w) && w.length >= 5)) return true;
-
-    return false;
-  });
-
-  if (match) {
-    attendeeName       = match.name; // normalize to canonical name
-    verificationStatus = 'verified';
-    attendeeTier       = match.tier;
-    attendeeContext    = match.context || '';
-    exchangeCap        = (match.tier === 1) ? 15 : 10;
-    if (!attendeeRole    && match.role)    attendeeRole    = match.role;
-    if (!attendeeCompany && match.company) attendeeCompany = match.company;
-    if (!attendeeEmail   && match.email)   attendeeEmail   = match.email;
-    questionPhase = 4; // advance to email collection
-  } else if (words.length >= 2) {
-    verificationStatus = 'pending';
-    attendeeTier       = null;
-    exchangeCap        = 10;
-    questionPhase = 4;
-  } else {
-    verificationStatus = 'blocked';
-  }
-}
-
-// ─── Clean name input ─────────────────────────────────
-function cleanName(raw) {
-  // Strip common filler phrases people type when asked for their name
-  return raw
-    .replace(/^(my name is|i'm|i am|it's|its|hi i'm|hey i'm|name:|called)/i, '')
-    .replace(/[!.,]/g, '')
-    .trim()
-    .split(/\s+/)
-    .slice(0, 3) // max 3 words — no full sentences
-    .join(' ');
-}
-
-// ─── Handle post-reply logic ──────────────────────────
+// ─── Handle post-reply ────────────────────────────────
 function handlePostReply(reply) {
-  const lowerReply = reply.toLowerCase();
+  if (questionPhase === -1) return; // non-HUB, done
 
-  // Non-HUB — conversation ended, do nothing
-  if (questionPhase === -1) return;
-
-  // Phase 4: name captured and verified — Herbie will ask to confirm email readiness
-  // The phase 4 system prompt handles personalized acknowledgment — no separate tier greeting needed
-  if (!questionsComplete && questionPhase === 4) {
-    tierGreetingDone = true; // Suppress injectTierGreeting — phase 4 prompt covers it
-    emailConfirmPending = true;
+  // After Herbie responds to HUB confirmation — ask for name
+  if (questionPhase === 0) {
+    questionPhase = 1;
     return;
   }
 
-  // Open chat mode — count exchanges against tier cap
+  // After Herbie acknowledges name — move to Q2
+  if (questionPhase === 1) {
+    questionPhase = 2;
+    return;
+  }
+
+  // After Q2 response — move to Q3
+  if (questionPhase === 2) {
+    questionPhase = 3;
+    return;
+  }
+
+  // After Q3 response — Herbie asks "Can I put you in the drawing?"
+  // Set flag so next user reply triggers email screen if yes
+  if (questionPhase === 3) {
+    drawingConfirmPending = true;
+    return;
+  }
+
+  // Open chat mode
   if (questionsComplete) {
     openExchangeCount++;
     updateCounter();
-
     if (openExchangeCount >= exchangeCap) {
-      const capMsg = "I've given you what I can here — Jason Youngs is the person to go deeper with. Want me to flag him that you'd like to connect?";
+      const capMsg = "I've given you what I can here — Jason Youngs is the person to go deeper with. He's here today and would love to connect. Want me to flag him?";
       setTimeout(() => {
         appendMessage('herbie', capMsg);
         conversationHistory.push({ role: 'assistant', content: capMsg });
@@ -1073,11 +917,82 @@ function handlePostReply(reply) {
   }
 }
 
-// ─── Anthropic API call ───────────────────────────────
-async function callHerbie(userMessage) {
-  const systemPrompt = buildSystemPrompt();
+// ─── Build system prompt ──────────────────────────────
+function buildSystemPrompt() {
 
-  // Calls Netlify proxy function — API key lives server-side
+  // Non-HUB
+  if (questionPhase === -1) {
+    return "You are Herbie, SBR's intelligence layer at the HUB Pacific AE Summit. The person has indicated they are not part of the HUB team. Respond warmly: 'Love that you're here — this experience is set up specifically for the HUB team today. Hope you enjoy the summit and let's connect another time!' Then stop — no more questions, no email collection.";
+  }
+
+  // Phase 0: HUB confirmed — ask for name
+  if (questionPhase === 0) {
+    return "You are Herbie, SBR's intelligence layer at the HUB Pacific AE Summit. The attendee just confirmed they are with HUB. Respond: 'Perfect — let's go. Here's the first easy one. What's your name? First and last — and make sure I get the spelling right 😄' Exactly that. No variation.";
+  }
+
+  // Phase 1: Name captured — personalized acknowledgment + Q2
+  if (questionPhase === 1) {
+    const firstName = attendeeName.split(' ')[0] || attendeeName;
+    let tierLine = '';
+    if (verificationStatus === 'verified') {
+      if (attendeeTier === 1 && attendeeContext) {
+        tierLine = 'TIER 1 CONTEXT — use naturally in one warm sentence, do not read back robotically: ' + attendeeContext;
+      } else if (attendeeTier === '2b') {
+        tierLine = 'This is a current SBR customer. Say: "[Name]! Great to see you here — Jason wanted to make sure partners like you knew this was built with you in mind."';
+      } else if (attendeeTier === 2) {
+        tierLine = 'Jason knows this person. Say: "[Name]! Jason mentioned he was hoping to connect with some familiar faces today — glad you\'re here."';
+      } else {
+        tierLine = 'Unknown attendee. Say: "[Name]! Great to meet you."';
+      }
+    } else {
+      tierLine = 'Say: "' + firstName + '! Great to meet you."';
+    }
+    return "You are Herbie at the HUB Pacific AE Summit. The attendee just gave their name: " + attendeeName + ". " + tierLine + " After the warm acknowledgment, immediately ask question 2 — do not pause. End with: 'Ready to move on? Here's question two — here we go.' Then ask: 'How would you rate your needs for the upcoming plan year — is it Stop Loss, Captive, or... I need it all?' Keep it to 3 sentences max.";
+  }
+
+  // Phase 2: Q2 answered — respond to stop loss / captive / all, then ask Q3
+  if (questionPhase === 2) {
+    const lower = q2Response.toLowerCase();
+    const isCaptive   = lower.includes('captive');
+    const isAll       = lower.includes('all') || lower.includes('everything') || lower.includes('both');
+    const isStopLoss  = lower.includes('stop') || lower.includes('loss') || lower.includes('sl') || (!isCaptive && !isAll);
+
+    let q2Reply = '';
+    if (isCaptive && !isAll) {
+      q2Reply = "Great choice — captive strategy is one of SBR's specialties. From feasibility to implementation to ongoing management, we help producers bring captive solutions to clients who are ready for that level of ownership. Last question — and then you're in the drawing.";
+    } else if (isAll) {
+      q2Reply = "We love to hear that — and we can absolutely help with all of it. Stop loss, captive, cost containment, reporting — SBR is built to support the full self-funded picture for your producers and their clients. Last question — and then you're in the drawing.";
+    } else {
+      q2Reply = "Love it — stop loss is our bread and butter. Whether it's a tough renewal, a large claimant situation, or finding the right carrier fit, SBR has the relationships and the tools to make sure your producers are in the best position possible. Last question — and then you're in the drawing.";
+    }
+    return "You are Herbie at the HUB Pacific AE Summit. The attendee answered the stop loss/captive/all question with: '" + q2Response + "'. Respond with exactly this: '" + q2Reply + "' Then ask: 'Last one to get you into the drawing — what would you say is the most challenging stop-loss or captive topic to describe to your clients?' Do not deviate from the scripted response above.";
+  }
+
+  // Phase 3: Q3 answered — acknowledge specifically, ask to enter drawing
+  if (questionPhase === 3) {
+    return "You are Herbie at the HUB Pacific AE Summit. The attendee just answered the challenging topic question with: '" + q3Response + "'. Acknowledge their answer in 1-2 warm specific sentences that validate what they said and connect it to SBR's expertise. Then say: 'That's a great one — and exactly the kind of thing we built Herbie to help with. Can I put you in the drawing?' End there — no more questions.";
+  }
+
+  // Open chat (questionsComplete)
+  let tierNote = '';
+  if (attendeeTier === 1 && attendeeContext) {
+    tierNote = 'DEEP CONTEXT — use naturally: ' + attendeeContext + ' ';
+  } else if (attendeeTier === '2b') {
+    tierNote = 'Current SBR customer — lean into partnership depth. ';
+  } else if (attendeeTier === 2) {
+    tierNote = 'Familiar face Jason knows — collegial and warm. ';
+  }
+
+  return "You are Herbie, SBR's intelligence layer at the HUB Pacific AE Summit. " + tierNote +
+    "You know: Name: " + attendeeName + ", Interests: " + (q2Response || 'stop loss and self-funding') + ", Challenge: " + (q3Response || 'discussed') + ". " +
+    "Answer questions about stop-loss, self-funding, captive structures, and SBR capabilities. " +
+    "For topics outside SBR specialty: professional liability → SPG specialty team; general insurance → offer to connect with Jason Youngs. " +
+    "Exchange cap: " + exchangeCap + ". At cap offer to connect with Jason Youngs directly. Keep responses concise and specific.";
+}
+
+// ─── Anthropic API call (via Netlify proxy) ───────────
+async function callHerbie() {
+  const systemPrompt = buildSystemPrompt();
   const response = await fetch('/api/herbie', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1088,214 +1003,132 @@ async function callHerbie(userMessage) {
       messages: conversationHistory
     })
   });
-
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
-    throw new Error(err.error?.message || `API error ${response.status}`);
+    throw new Error(err.error?.message || 'API error ' + response.status);
   }
-
   const data = await response.json();
-  const text = data.content?.[0]?.text || '';
-
-  // Detect if Herbie has completed the 3 questions and triggered email phase
-  if (!questionsComplete && (
-    text.toLowerCase().includes('coffee is on its way') ||
-    text.toLowerCase().includes('gift card is on its way') ||
-    text.toLowerCase().includes('what\'s on your mind') ||
-    (text.toLowerCase().includes('email') && text.toLowerCase().includes('on its way'))
-  )) {
-    questionsComplete = true;
-    updateCounter();
-  }
-
-  return text;
+  return data.content?.[0]?.text || '';
 }
 
-// ─── Build system prompt ──────────────────────────────
-function buildSystemPrompt() {
+// ─── Name cleaning ────────────────────────────────────
+function cleanName(raw) {
+  return raw
+    .replace(/^(my name is|i'm|i am|it's|its|hi i'm|hey i'm|name:|called|they call me)/i, '')
+    .replace(/[!.,?]/g, '')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 3)
+    .join(' ');
+}
 
-  // Phase -1: Non-HUB — end gracefully
-  if (questionPhase === -1) {
-    return "You are Herbie, SBR's intelligence layer at the Pacific AE Summit. The person has indicated they are not a HUB team member. Respond warmly: something like 'Love that! This raffle is specifically for HUB team members, but Jason and SBR would genuinely love to connect about ways to collaborate in supporting HUB together. Hope to see you around this week!' Then stop — no more questions.";
+// ─── Verification ─────────────────────────────────────
+function checkVerification() {
+  const cleaned   = cleanName(attendeeName);
+  const nameLower = cleaned.toLowerCase().trim();
+  const words     = nameLower.split(/\s+/).filter(w => w.length > 2);
+
+  const match = KNOWN_ATTENDEES.find(a => {
+    const full      = a.name.toLowerCase();
+    const firstName = full.split(' ')[0];
+    const lastName  = full.split(' ').pop();
+    if (nameLower.includes(firstName) && nameLower.includes(lastName)) return true;
+    if (lastName.length >= 4 && words.includes(lastName)) return true;
+    if (firstName.length >= 4 && words.includes(firstName)) return true;
+    if (words.some(w => lastName.startsWith(w) && w.length >= 5)) return true;
+    return false;
+  });
+
+  if (match) {
+    attendeeName       = match.name;
+    verificationStatus = 'verified';
+    attendeeTier       = match.tier;
+    attendeeContext    = match.context || '';
+    exchangeCap        = (match.tier === 1) ? 15 : 10;
+    if (!attendeeEmail && match.email) attendeeEmail = match.email;
+  } else if (words.length >= 2) {
+    verificationStatus = 'pending';
+    attendeeTier       = null;
+    exchangeCap        = 10;
+  } else {
+    verificationStatus = 'blocked';
   }
-
-  // Phase 0 or 0.5: Ask HUB or vendor
-  if (questionPhase === 0) {
-    return "You are Herbie, SBR's intelligence layer at the Pacific AE Summit. The attendee just responded to your opening. Ask them warmly whether they are with HUB International or one of the many great vendors and partners here supporting HUB. Light and friendly — one question only.";
-  }
-
-  // Phase 1: HUB gate — waiting for or just received HUB/vendor answer
-  if (questionPhase === 1) {
-    return "You are Herbie, SBR's intelligence layer at the Pacific AE Summit. Ask the attendee warmly whether they are with HUB International or one of the many great vendors and partners here. Light and friendly — one question only.";
-  }
-
-  // Phase 2: Topic question — they confirmed HUB
-  if (questionPhase === 2) {
-    return "You are Herbie at the Pacific AE Summit. The attendee just confirmed they are with HUB. Respond enthusiastically — something like 'Love that! Thank you for having SBR here.' Then ask: what is the most pressing self-funded topic they could use assistance with right now? Think broad — stop loss, TPAs, fully insured transition, internal education. Under 60 words.";
-  }
-
-  // Phase 3: Name capture — they answered the topic question
-  if (questionPhase === 3) {
-    return "You are Herbie at the Pacific AE Summit. The attendee just shared their biggest challenge — thank them genuinely for that. Now ask for their first and last name only so you can get them entered in the raffle. Under 40 words.";
-  }
-
-  // Phase 4: Post-verification — acknowledge by name, ask if ready to enter email
-  if (questionPhase === 4 && !questionsComplete) {
-    let tierNote = '';
-    if (verificationStatus === 'verified' && attendeeTier === 1 && attendeeContext) {
-      tierNote = 'IMPORTANT CONTEXT about this person (use naturally, not robotically): ' + attendeeContext + ' ';
-    } else if (verificationStatus === 'verified' && attendeeTier === '2b') {
-      tierNote = 'This is a current SBR customer — acknowledge the existing relationship warmly. ';
-    } else if (verificationStatus === 'verified' && attendeeTier === 2) {
-      tierNote = 'Jason knows this person — be warm and collegial. ';
-    } else if (verificationStatus === 'pending') {
-      tierNote = 'Not on the verified list but appears legitimate — continue warmly. ';
-    }
-    return "You are Herbie at the Pacific AE Summit. " + tierNote +
-      "Acknowledge the attendee warmly by their first name (" + (attendeeName.split(' ')[0] || attendeeName) + "). " +
-      "Then ask: 'Ready to drop your email so we can enter you in the raffle?' " +
-      "One warm sentence of acknowledgment, then the question. Under 50 words total. Do not repeat their name twice.";
-  }
-
-  // Open chat mode
-  let tierNote = '';
-  if (attendeeTier === 1 && attendeeContext) {
-    tierNote = 'TIER 1 — Deep context: ' + attendeeContext + ' Use it naturally.';
-  } else if (attendeeTier === '2b') {
-    tierNote = 'TIER 2B — Current SBR customer. Lean into partnership depth.';
-  } else if (attendeeTier === 2) {
-    tierNote = 'TIER 2 — Familiar face. Collegial and warm.';
-  }
-
-  return "You are Herbie, SBR's intelligence layer at the Pacific AE Summit. You know who you are talking to:" +
-    "\n- Name: " + (attendeeName || 'the attendee') +
-    "\n- Company: " + (attendeeCompany || 'HUB International') +
-    "\n- Interests: " + (attendeeInterests || 'self-funding and stop-loss topics') +
-    "\n\n" + tierNote +
-    "\n\nAnswer questions about stop-loss, self-funding, captive structures, and SBR capabilities intelligently." +
-    "\n\nFor topics outside SBR specialty:" +
-    "\n- Professional liability → SPG specialty team" +
-    "\n- General insurance outside stop-loss → offer to connect with Jason Youngs" +
-    "\n\nExchange cap: " + exchangeCap + ". At cap offer to connect them with Jason Youngs directly." +
-    "\n\nKeep responses concise, warm, and specific.";
 }
 
 // ─── Email submission ─────────────────────────────────
 async function submitEmail() {
   const emailVal = document.getElementById('email-input').value.trim();
-  if (!emailVal || !emailVal.includes('@')) {
-    showToast('Please enter a valid email address.');
-    return;
-  }
-  attendeeEmail = emailVal;
-
-  // Show confirmation screen
-  document.getElementById('confirm-email-line').textContent = "You're entered. Good luck — winner announced at the end of the event. Jason will be in touch.";
-  showScreen('screen-confirm');
-
-  // Open chat mode
+  if (!emailVal || !emailVal.includes('@')) { showToast('Please enter a valid email address.'); return; }
+  attendeeEmail   = emailVal;
   questionsComplete = true;
+  showScreen('screen-confirm');
+  await writeHerbieLog(verificationStatus === 'pending' ? 'conference_pending_approval' : 'conference_completion');
+}
+
+// ─── Return to chat ───────────────────────────────────
+function returnToChat() {
+  showScreen('screen-chat');
   updateCounter();
-
-  // Tango Card API disabled for now — gift cards fulfilled manually by Jason after the event.
-  // Re-enable sendTangoCard() here once Tango confirms a reusable reward link.
-  giftCardSent = false;
-
-  if (verificationStatus === 'verified') {
-    // Log completion — gift card flagged as pending manual fulfillment
-    await writeHerbieLog('conference_completion');
-  } else if (verificationStatus === 'pending') {
-    await writeHerbieLog('conference_pending_approval');
-  }
-  // blocked: no action, no log
+  const firstName = attendeeName.split(' ')[0] || 'there';
+  const msg = "Welcome back " + firstName + "! You're entered — now let's talk. What's on your mind? Stop loss questions, self-funding strategy, what SBR can do for your book — I'm here for all of it.";
+  appendMessage('herbie', msg);
+  conversationHistory.push({ role: 'assistant', content: msg });
 }
-
-// ─── Tango Card API ───────────────────────────────────
-// ── Tango Card STUBBED — raffle mechanic is active ──────
-// To reactivate: uncomment and call sendTangoCard() in submitEmail()
-/*
-async function sendTangoCard() {
-  try {
-    const tangoResponse = await fetch('https://api.tangocard.com/raas/v2/orders', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Basic ' + btoa(TANGO_PLATFORM_NAME + ':' + TANGO_PLATFORM_KEY),
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        accountIdentifier: TANGO_ACCOUNT_ID,
-        amount: 500, // $5.00 in cents
-        campaignToken: TANGO_CAMPAIGN_TOKEN,
-        emailSubject: 'Your coffee is on Herbie — compliments of SBR',
-        message: 'Thanks for connecting with SBR at the HUB LA conference. Enjoy your coffee. — Jason Youngs, SBR Pacific Leader',
-        recipient: {
-          email: attendeeEmail,
-          firstName: attendeeName.split(' ')[0] || attendeeName
-        },
-        sendEmail: true,
-        utid: STARBUCKS_UTID // Get from: GET https://api.tangocard.com/raas/v2/catalogs
-      })
-    });
-    const result = await tangoResponse.json();
-    console.log('[Tango] Gift card sent:', result);
-  } catch(e) {
-    console.error('[Tango] Error:', e);
-  }
-}
-*/
 
 // ─── HerbieLog write ──────────────────────────────────
 async function writeHerbieLog(eventType) {
   try {
     await fetch('https://sbr-herbie-functions-c3cdccc7c5a9dyay.centralus-01.azurewebsites.net/api/HerbieLog', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-functions-key': HERBIE_FUNCTION_KEY
-      },
+      headers: { 'Content-Type': 'application/json', 'x-functions-key': HERBIE_FUNCTION_KEY },
       body: JSON.stringify({
         producer: 'conference-hub-la-2026',
-        region: 'hub-la-conference',
-        groupname: 'hub-la-2026',
+        region:   'hub-la-conference',
+        groupname:'hub-la-2026',
         event_type: eventType,
         notes: JSON.stringify({
-          name: attendeeName,
-          company: attendeeCompany,
-          role: attendeeRole,
-          email: attendeeEmail,
-          interests: attendeeInterests,
-          wholesaler_experience: wholesalerExperience,
+          name:               attendeeName,
+          company:            attendeeCompany,
+          email:              attendeeEmail,
+          tier:               attendeeTier,
+          question_2_response: q2Response,
+          question_3_response: q3Response,
           verification_status: verificationStatus,
-          raffle_entry: (verificationStatus === 'verified'),
-          gift_card_sent: false,
-          timestamp: new Date().toISOString()
+          raffle_entry:       (verificationStatus === 'verified'),
+          gift_card_pending:  (verificationStatus === 'verified'),
+          timestamp:          new Date().toISOString()
         })
       })
     });
-    console.log('[HerbieLog] Written:', eventType);
-  } catch(e) {
-    console.error('[HerbieLog] Error:', e);
-  }
+  } catch(e) { console.error('[HerbieLog]', e); }
 }
 
-// ─── Return to chat from confirmation ────────────────
-function returnToChat() {
-  showScreen('screen-chat');
-  if (conversationHistory.length > 0) {
-    const continueMsg = "Welcome back! Want to keep talking stop loss, or anything else on your mind?";
-    appendMessage('herbie', continueMsg);
-    conversationHistory.push({ role: 'assistant', content: continueMsg });
-  }
-  updateCounter();
+// ─── Tango Card — STUBBED, not active ────────────────
+// Raffle mechanic is live. Uncomment and call sendTangoCard() in submitEmail() to reactivate.
+/*
+async function sendTangoCard() {
+  const tangoResponse = await fetch('https://api.tangocard.com/raas/v2/orders', {
+    method: 'POST',
+    headers: { 'Authorization': 'Basic ' + btoa(TANGO_PLATFORM_NAME + ':' + TANGO_PLATFORM_KEY), 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      accountIdentifier: TANGO_ACCOUNT_ID, amount: 500, campaignToken: TANGO_CAMPAIGN_TOKEN,
+      emailSubject: 'Your coffee is on Herbie — compliments of SBR',
+      message: 'Thanks for connecting with SBR at the HUB LA conference. — Jason Youngs, SBR Pacific Leader',
+      recipient: { email: attendeeEmail, firstName: attendeeName.split(' ')[0] },
+      sendEmail: true, utid: STARBUCKS_UTID
+    })
+  });
+  console.log('[Tango]', await tangoResponse.json());
 }
+*/
 
-// ─── Toast notification ───────────────────────────────
+// ─── Toast ────────────────────────────────────────────
 function showToast(msg) {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
+  t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
 }
+</script>
 </script>
 
 </body>
