@@ -892,18 +892,9 @@ function handlePostReply(reply) {
     return;
   }
 
-  // After Q2 response — advance to Q3 and send Q3 question automatically
+  // After Q2 response — advance to Q3 (Q3 question is included at end of Q2 response)
   if (questionPhase === 2) {
     questionPhase = 3;
-    // Send Q3 question as a follow-up Herbie message
-    setTimeout(async () => {
-      showTyping();
-      await sleep(800);
-      removeTyping();
-      const q3msg = "Last one to get you into the drawing — what would you say is the most challenging stop-loss or captive topic to explain to your clients?";
-      appendMessage('herbie', q3msg);
-      conversationHistory.push({ role: 'assistant', content: q3msg });
-    }, 600);
     return;
   }
 
@@ -989,8 +980,8 @@ function buildSystemPrompt() {
       "On captive: SBR specializes in captive feasibility, design, and implementation for groups ready to take more ownership of their risk. " +
       "On cost containment and full self-funding: SBR speaks to the whole dollar — not just stop loss placement but the full cost of the self-funded plan. " +
       "Answer whatever the attendee said about their needs in 2-3 warm specific sentences that reflect this expertise. " +
-      "End with exactly this sentence and nothing else after it: 'Last question — and then you\'re in the drawing.' " +
-      "Do NOT ask the last question yet — just end there. Under 80 words total.";
+      "After your 2-3 sentence SBR response, end with: 'Last question — and then you\'re in the drawing. What would you say is the most challenging stop-loss or captive topic to explain to your clients?' " +
+      "That exact closing. One combined message. Under 90 words total.";
   }
 
   // Phase 3: Q3 answered — one warm sentence ack + drawing ask
