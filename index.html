@@ -728,7 +728,7 @@ let q3Response           = ''; // challenging topic
 let verificationStatus   = 'unknown';
 let attendeeTier         = null;
 let attendeeContext      = '';
-let exchangeCap          = 10;
+let exchangeCap          = 5;         // 5 exchanges for all users in open chat
 let drawingConfirmPending = false; // true when Herbie asks "Can I put you in the drawing?"
 
 // ─── Screen Navigation ────────────────────────────────
@@ -892,9 +892,18 @@ function handlePostReply(reply) {
     return;
   }
 
-  // After Q2 response — advance to Q3 (Q3 question was included in same Herbie message)
+  // After Q2 response — advance to Q3 and send Q3 question automatically
   if (questionPhase === 2) {
     questionPhase = 3;
+    // Send Q3 question as a follow-up Herbie message
+    setTimeout(async () => {
+      showTyping();
+      await sleep(800);
+      removeTyping();
+      const q3msg = "Last one to get you into the drawing — what would you say is the most challenging stop-loss or captive topic to explain to your clients?";
+      appendMessage('herbie', q3msg);
+      conversationHistory.push({ role: 'assistant', content: q3msg });
+    }, 600);
     return;
   }
 
@@ -980,9 +989,8 @@ function buildSystemPrompt() {
       "On captive: SBR specializes in captive feasibility, design, and implementation for groups ready to take more ownership of their risk. " +
       "On cost containment and full self-funding: SBR speaks to the whole dollar — not just stop loss placement but the full cost of the self-funded plan. " +
       "Answer whatever the attendee said about their needs in 2-3 warm specific sentences that reflect this expertise. " +
-      "End with exactly: 'Last question — and then you\'re in the drawing.' " +
-      "Then immediately ask: 'Last one to get you into the drawing — what would you say is the most challenging stop-loss or captive topic to explain to your clients?' " +
-      "Both the response and the Q3 question in the same message. Under 100 words total.";
+      "End with exactly this sentence and nothing else after it: 'Last question — and then you\'re in the drawing.' " +
+      "Do NOT ask the last question yet — just end there. Under 80 words total.";
   }
 
   // Phase 3: Q3 answered — one warm sentence ack + drawing ask
@@ -990,7 +998,7 @@ function buildSystemPrompt() {
     return "You are Herbie at the HUB Pacific AE Summit. The attendee just answered the challenging topic question with: '" + q3Response + "'. " +
       "Acknowledge their answer in exactly ONE warm specific sentence that connects what they said to SBR's expertise. " +
       "Then say exactly: 'That\'s exactly what we built Herbie to help with. Can I put you in the drawing?' " +
-      "Two sentences total. No more questions. Do not add anything after the drawing ask.";
+      "Two sentences total maximum. Do not repeat the last question. Do not add anything after the drawing ask.";
   }
 
 }
@@ -1049,12 +1057,12 @@ function checkVerification() {
     verificationStatus = 'verified';
     attendeeTier       = match.tier;
     attendeeContext    = match.context || '';
-    exchangeCap        = (match.tier === 1) ? 15 : 10;
+    exchangeCap        = 5; // 5 for all tiers
     if (!attendeeEmail && match.email) attendeeEmail = match.email;
   } else if (words.length >= 2) {
     verificationStatus = 'pending';
     attendeeTier       = null;
-    exchangeCap        = 10;
+    exchangeCap        = 5;
   } else {
     verificationStatus = 'blocked';
   }
