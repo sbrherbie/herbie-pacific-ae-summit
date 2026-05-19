@@ -848,14 +848,17 @@ function parseUserAnswer(text) {
 
   if (questionPhase === 0) {
     // HUB / vendor gate
-    const isVendor = /\b(vendor|carrier|not hub|not with hub|i'm not|i am not|consultant|partner|tpa|broker|other)\b/.test(lower);
-    const isHub    = /\b(hub|yes|yep|yeah|i am|i'm|sure|absolutely|team|producer|ae|benefits|account)\b/.test(lower);
-    if (isVendor && !isHub) {
+    const isNo     = /^(no|nope|nah|not really|i am not|i'm not|negative|no i'm not|no i am not|not hub|not with hub|vendor|carrier|consultant|partner|tpa|broker|other)/.test(lower) || lower === 'n';
+    const isHub    = /\b(hub|yes|yep|yeah|sure|absolutely|team|producer|benefits|account|of course|definitely|correct|affirmative)\b/.test(lower);
+    if (isNo && !isHub) {
       questionPhase = -1;
-    } else if (isHub || lower.length < 20) {
-      // Short replies to a yes/no question almost always mean yes
+    } else if (isHub || (!isNo && lower.length < 25)) {
+      // Short non-negative replies to a yes/no question = yes
       attendeeCompany = 'HUB International';
-      questionPhase   = 0; // stays 0 until Herbie responds and asks for name
+      questionPhase   = 0;
+    } else {
+      // Unclear — treat as non-HUB to be safe
+      questionPhase = -1;
     }
 
   } else if (questionPhase === 1) {
@@ -940,7 +943,7 @@ function buildSystemPrompt() {
 
   // Non-HUB
   if (questionPhase === -1) {
-    return "You are Herbie, SBR's intelligence layer at the HUB Pacific AE Summit. The person has indicated they are not part of the HUB team. Respond warmly: 'Love that you're here — this experience is set up specifically for the HUB team today. Hope you enjoy the summit and let's connect another time!' Then stop — no more questions, no email collection.";
+    return "You are Herbie, SBR's intelligence layer at the HUB Pacific AE Summit. The person has indicated they are not part of the HUB team. Respond warmly in 2-3 sentences: let them know this experience is set up specifically for the HUB team today, but that Jason Youngs would genuinely love to connect about how you can mutually benefit and support HUB together. Wish them a great Summit. Then stop completely — no more questions, no email, no follow-up.";
   }
 
   // Phase 0: HUB confirmed — ask for name
