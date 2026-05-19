@@ -680,7 +680,7 @@ const HERBIE_FUNCTION_KEY    = 'HERBIE_FUNCTION_KEY';
         inputmode="email"
       >
       <button class="btn-gold" onclick="submitEmail()">Enter me →</button>
-      <p class="email-note">We'll contact the winner directly after the event.</p>
+      <p class="email-note">Winner will be announced here at the HUB event!</p>
     </div>
   </div>
 
@@ -691,7 +691,7 @@ const HERBIE_FUNCTION_KEY    = 'HERBIE_FUNCTION_KEY';
       <svg viewBox="0 0 24 24"><path d="M4 12L9 17L20 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </div>
     <h2>You're in the drawing!</h2>
-    <p class="email-line">Two winners. $250 Visa gift cards each. Jason will announce at the end of the event.</p>
+    <p class="email-line">Two winners. $250 Visa gift cards each. Winner will be announced here at the Summit!</p>
     <p class="email-line" style="color:#c9943c;margin-top:-16px;">Don't forget to grab your phone charger on the way out.</p>
     <button class="continue-link" onclick="returnToChat()">Keep chatting with Herbie →</button>
   </div>
@@ -902,7 +902,7 @@ function handlePostReply(reply) {
     return;
   }
 
-  // Open chat mode
+  // Open chat mode — count each completed exchange
   if (questionsComplete) {
     openExchangeCount++;
     updateCounter();
@@ -919,6 +919,24 @@ function handlePostReply(reply) {
 
 // ─── Build system prompt ──────────────────────────────
 function buildSystemPrompt() {
+
+  // Open chat — MUST check this first so completed sessions never hit phase prompts
+  if (questionsComplete) {
+    let tierNote = '';
+    if (attendeeTier === 1 && attendeeContext) {
+      tierNote = 'DEEP CONTEXT — use naturally: ' + attendeeContext + ' ';
+    } else if (attendeeTier === '2b') {
+      tierNote = 'Current SBR customer — lean into partnership depth. ';
+    } else if (attendeeTier === 2) {
+      tierNote = 'Familiar face Jason knows — collegial and warm. ';
+    }
+    return "You are Herbie, SBR's intelligence layer at the HUB Pacific AE Summit. " + tierNote +
+      "You know: Name: " + attendeeName + ", Stop loss/captive interests: " + (q2Response || 'discussed') + ", Key challenge: " + (q3Response || 'discussed') + ". " +
+      "Answer questions about stop-loss, self-funding, captive structures, and SBR capabilities. " +
+      "For topics outside SBR specialty: professional liability → SPG specialty team; general insurance → offer to connect with Jason Youngs. " +
+      "Exchange cap: " + exchangeCap + ". At cap offer to connect with Jason Youngs directly. Keep responses concise and specific. " +
+      "IMPORTANT: Do NOT ask if they want to be put in the drawing — they are already entered.";
+  }
 
   // Non-HUB
   if (questionPhase === -1) {
@@ -973,21 +991,6 @@ function buildSystemPrompt() {
     return "You are Herbie at the HUB Pacific AE Summit. The attendee just answered the challenging topic question with: '" + q3Response + "'. Acknowledge their answer in 1-2 warm specific sentences that validate what they said and connect it to SBR's expertise. Then say: 'That's a great one — and exactly the kind of thing we built Herbie to help with. Can I put you in the drawing?' End there — no more questions.";
   }
 
-  // Open chat (questionsComplete)
-  let tierNote = '';
-  if (attendeeTier === 1 && attendeeContext) {
-    tierNote = 'DEEP CONTEXT — use naturally: ' + attendeeContext + ' ';
-  } else if (attendeeTier === '2b') {
-    tierNote = 'Current SBR customer — lean into partnership depth. ';
-  } else if (attendeeTier === 2) {
-    tierNote = 'Familiar face Jason knows — collegial and warm. ';
-  }
-
-  return "You are Herbie, SBR's intelligence layer at the HUB Pacific AE Summit. " + tierNote +
-    "You know: Name: " + attendeeName + ", Interests: " + (q2Response || 'stop loss and self-funding') + ", Challenge: " + (q3Response || 'discussed') + ". " +
-    "Answer questions about stop-loss, self-funding, captive structures, and SBR capabilities. " +
-    "For topics outside SBR specialty: professional liability → SPG specialty team; general insurance → offer to connect with Jason Youngs. " +
-    "Exchange cap: " + exchangeCap + ". At cap offer to connect with Jason Youngs directly. Keep responses concise and specific.";
 }
 
 // ─── Anthropic API call (via Netlify proxy) ───────────
@@ -1059,8 +1062,10 @@ function checkVerification() {
 async function submitEmail() {
   const emailVal = document.getElementById('email-input').value.trim();
   if (!emailVal || !emailVal.includes('@')) { showToast('Please enter a valid email address.'); return; }
-  attendeeEmail   = emailVal;
+  attendeeEmail     = emailVal;
   questionsComplete = true;
+  questionPhase     = 4; // Lock phase to open chat
+  drawingConfirmPending = false;
   showScreen('screen-confirm');
   await writeHerbieLog(verificationStatus === 'pending' ? 'conference_pending_approval' : 'conference_completion');
 }
@@ -1068,6 +1073,8 @@ async function submitEmail() {
 // ─── Return to chat ───────────────────────────────────
 function returnToChat() {
   showScreen('screen-chat');
+  questionsComplete = true; // ensure flag is set
+  openExchangeCount = 0;    // reset counter for open chat
   updateCounter();
   const firstName = attendeeName.split(' ')[0] || 'there';
   const msg = "Welcome back " + firstName + "! You're entered — now let's talk. What's on your mind? Stop loss questions, self-funding strategy, what SBR can do for your book — I'm here for all of it.";
