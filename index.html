@@ -612,7 +612,7 @@ const TANGO_PLATFORM_KEY     = 'TANGO_PLATFORM_KEY';
 const TANGO_ACCOUNT_ID       = 'TANGO_ACCOUNT_ID';
 const TANGO_CAMPAIGN_TOKEN   = 'TANGO_CAMPAIGN_TOKEN';
 const STARBUCKS_UTID         = 'STARBUCKS_UTID'; // GET https://api.tangocard.com/raas/v2/catalogs
-const HERBIE_FUNCTION_KEY    = 'HERBIE_FUNCTION_KEY';
+// HERBIE_FUNCTION_KEY is a Netlify environment variable — handled by netlify/functions/log.js
 </script>
 
 <!-- ════════════════════════════════════════════════════
@@ -1074,8 +1074,8 @@ async function submitEmail() {
 // ─── Return to chat ───────────────────────────────────
 function returnToChat() {
   showScreen('screen-chat');
-  questionsComplete = true; // ensure flag is set
-  openExchangeCount = 0;    // reset counter for open chat
+  questionsComplete = true;
+  openExchangeCount = 1;    // Welcome back message counts as exchange 1
   updateCounter();
   const firstName = attendeeName.split(' ')[0] || 'there';
   const msg = "Welcome back " + firstName + "! You're in. What's on your mind — I'm here for whatever you want to dig into.";
@@ -1085,26 +1085,27 @@ function returnToChat() {
 
 // ─── HerbieLog write ──────────────────────────────────
 async function writeHerbieLog(eventType) {
+  // Calls Netlify proxy function — HERBIE_FUNCTION_KEY lives server-side
   try {
-    await fetch('https://sbr-herbie-functions-c3cdccc7c5a9dyay.centralus-01.azurewebsites.net/api/HerbieLog', {
+    await fetch('/api/log', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-functions-key': HERBIE_FUNCTION_KEY },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         producer: 'conference-hub-la-2026',
         region:   'hub-la-conference',
         groupname:'hub-la-2026',
         event_type: eventType,
         notes: JSON.stringify({
-          name:               attendeeName,
-          company:            attendeeCompany,
-          email:              attendeeEmail,
-          tier:               attendeeTier,
+          name:                attendeeName,
+          company:             attendeeCompany,
+          email:               attendeeEmail,
+          tier:                attendeeTier,
           question_2_response: q2Response,
           question_3_response: q3Response,
           verification_status: verificationStatus,
-          raffle_entry:       (verificationStatus === 'verified'),
-          gift_card_pending:  (verificationStatus === 'verified'),
-          timestamp:          new Date().toISOString()
+          raffle_entry:        (verificationStatus === 'verified'),
+          gift_card_pending:   (verificationStatus === 'verified'),
+          timestamp:           new Date().toISOString()
         })
       })
     });
