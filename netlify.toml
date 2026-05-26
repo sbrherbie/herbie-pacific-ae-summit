@@ -2,3 +2,8 @@
   from = "/api/herbie"
   to = "/.netlify/functions/herbie"
   status = 200
+
+[[redirects]]
+  from = "/api/log"
+  to = "/.netlify/functions/log"
+  status = 200
